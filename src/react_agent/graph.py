@@ -76,7 +76,7 @@ async def recommend_product(state: State) -> Dict[str, List[AIMessage]]:
         dict: A dictionary containing the model's response message.
     """
 
-    logging.info(state.messages[-1])
+    # logging.info(state.messages[-1])
 
     configuration = Configuration.from_context()
 

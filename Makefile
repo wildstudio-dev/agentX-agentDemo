@@ -25,7 +25,7 @@ dev:
 	# 2. Then, activate your Conda environment.
 	# 3. Finally, run your uvx command.
 	# The '&&' ensures each step succeeds before moving to the next.
-	conda activate $(CONDA_ENV_NAME) && uvx --from="langgraph-cli[inmem]" --with-editable=. langgraph dev
+	conda activate $(CONDA_ENV_NAME) && uvx --from="langgraph-cli[inmem]" --with-editable=. langgraph dev --allow-blocking
 
 ######################
 # LINTING AND FORMATTING

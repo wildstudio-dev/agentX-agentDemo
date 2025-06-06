@@ -21,7 +21,7 @@ For the response as
   </breakdown>
   
   <parameters>
-    • Credit Score: 720
+    • Credit Score (FICO Score): 720
     • Down Payment: 20% ($124,980)
     • Loan Type: Conventional
     • Property Type: Primary Residence
