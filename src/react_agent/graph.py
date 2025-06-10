@@ -2,7 +2,6 @@
 
 Works with a chat model with tool calling support.
 """
-import logging
 from datetime import UTC, datetime
 from typing import Dict, List, Literal, cast
 
@@ -11,12 +10,11 @@ from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode
 
 from react_agent.state import InputState, State
-from react_agent.tools import TOOLS
+from react_agent.custom_get_rate_tool import get_rate
 from react_agent.configuration import Configuration
 from react_agent.utils import load_chat_model
 
 # Define the function that calls the model
-
 
 async def call_model(state: State) -> Dict[str, List[AIMessage]]:
     """Call the LLM powering our "agent".
@@ -33,7 +31,7 @@ async def call_model(state: State) -> Dict[str, List[AIMessage]]:
     configuration = Configuration.from_context()
 
     # Initialize the model with tool binding. Change the model or add more tools here.
-    model = load_chat_model(configuration.model).bind_tools(TOOLS)
+    model = load_chat_model(configuration.model).bind_tools([get_rate])
 
     # Format the system prompt. Customize this to change the agent's behavior.
     system_message = configuration.system_prompt.format(
@@ -103,12 +101,15 @@ async def recommend_product(state: State) -> Dict[str, List[AIMessage]]:
 
 # Define a new graph
 
-builder = StateGraph(State, input=InputState, config_schema=Configuration)
+builder = StateGraph(
+    State,
+    input=InputState,
+    config_schema=Configuration,
+)
 
 # Define the two nodes we will cycle between
 builder.add_node(call_model)
-builder.add_node(recommend_product)
-builder.add_node("tools", ToolNode(TOOLS))
+builder.add_node("tools", ToolNode([get_rate]))
 
 # Set the entrypoint as `call_model`
 # This means that this node is the first one called
@@ -134,10 +135,6 @@ def route_model_output(state: State) -> Literal["__end__", "tools"]:
     # If there is no tool call, then we finish
     if not last_message.tool_calls:
         return "__end__"
-    # if last_message.tool_calls is get_rate tool
-    # if last_message.tool_calls[0].get("name", None) == "get_rate":
-    #     # If the last message is a tool call to get_rate, we finish
-    #     return "recommend_product"
     # Otherwise we execute the requested actions
     return "tools"
 
@@ -152,8 +149,9 @@ builder.add_conditional_edges(
 
 # Add a normal edge from `tools` to `call_model`
 # This creates a cycle: after using tools, we always return to the model
-builder.add_edge("tools", "recommend_product")
-builder.add_edge("recommend_product", "__end__")
+builder.add_edge("tools", "__end__")
 
 # Compile the builder into an executable graph
-graph = builder.compile(name="ReAct Agent")
+graph = builder.compile(
+    name="WillStudio LoanX Agent",
+)

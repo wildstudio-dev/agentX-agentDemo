@@ -8,7 +8,7 @@ from typing import Annotated
 from langchain_core.runnables import ensure_config
 from langgraph.config import get_config
 
-from react_agent.prompts import SYSTEM_PROMPT, RECOMMEND_PROMPT
+from react_agent.prompts import SECOND_SYSTEM_PROMPT, RECOMMEND_PROMPT
 
 
 @dataclass(kw_only=True)
@@ -16,7 +16,7 @@ class Configuration:
     """The configuration for the agent."""
 
     system_prompt: str = field(
-        default=SYSTEM_PROMPT,
+        default=SECOND_SYSTEM_PROMPT,
         metadata={
             "description": "The system prompt to use for the agent's interactions. "
             "This prompt sets the context and behavior for the agent."
