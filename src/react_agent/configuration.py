@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field, fields
-from typing import Annotated
+from typing import Annotated, Optional, Any
 
-from langchain_core.runnables import ensure_config
+from langchain_core.runnables import ensure_config, RunnableConfig
 from langgraph.config import get_config
 
 from react_agent.prompts import SECOND_SYSTEM_PROMPT, RECOMMEND_PROMPT
@@ -14,7 +15,7 @@ from react_agent.prompts import SECOND_SYSTEM_PROMPT, RECOMMEND_PROMPT
 @dataclass(kw_only=True)
 class Configuration:
     """The configuration for the agent."""
-
+    user_id: str = "default"
     system_prompt: str = field(
         default=SECOND_SYSTEM_PROMPT,
         metadata={
@@ -32,8 +33,8 @@ class Configuration:
 
     model: Annotated[str, {"__template_metadata__": {"kind": "llm"}}] = field(
         # default="anthropic/claude-opus-4-20250514",
-        # default="openai/gpt-4.1",
-        default="google_genai/gemini-2.5-flash-preview-05-20",
+        default="openai/gpt-4.1",
+        # default="google_genai/gemini-2.5-flash-preview-05-20",
         metadata={
             "description": "The name of the language model to use for the agent's main interactions. "
             "Should be in the form: provider/model-name."
@@ -58,3 +59,19 @@ class Configuration:
         configurable = config.get("configurable") or {}
         _fields = {f.name for f in fields(cls) if f.init}
         return cls(**{k: v for k, v in configurable.items() if k in _fields})
+
+    @classmethod
+    def from_runnable_config(
+            cls, config: Optional[RunnableConfig] = None
+    ) -> "Configuration":
+        """Create a Configuration instance from a RunnableConfig."""
+        configurable = (
+            config["configurable"] if config and "configurable" in config else {}
+        )
+        values: dict[str, Any] = {
+            f.name: os.environ.get(f.name.upper(), configurable.get(f.name))
+            for f in fields(cls)
+            if f.init
+        }
+
+        return cls(**{k: v for k, v in values.items() if v})
