@@ -3,5 +3,12 @@
   "graphs": {
     "agent": "./src/react_agent/graph.py:graph"
   },
-  "env": ".env"
+  "env": ".env",
+  "store": {
+      "index": {
+          "dims": 1536,
+          "embed": "./src/react_agent/embed.py:aembed_texts",
+          "fields": ["$"]
+      }
+  }
 }

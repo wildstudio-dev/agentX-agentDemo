@@ -67,7 +67,15 @@ To use OpenAI's chat models:
 OPENAI_API_KEY=your-api-key
 ```
 
+## Setup memory
 
+Make sure you have the OPENAI_TOKEN or relevant embeddings model token.
+
+We specify in langgraph.json a embeddings functions since the standard approach
+with default embedding strategy fails.
+https://langchain-ai.github.io/langgraph/cloud/deployment/semantic_search/#custom-embeddings
+https://langchain-ai.github.io/langgraph/concepts/persistence/#using-in-langgraph
+https://github.com/langchain-ai/memory-agent/
 
 
 
