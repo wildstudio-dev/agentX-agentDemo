@@ -3,21 +3,23 @@
 Works with a chat model with tool calling support.
 """
 import asyncio
+import logging
 from datetime import UTC, datetime
 from typing import Dict, List, Literal, cast
 
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig
+from langgraph.constants import END
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode
 from langgraph.store.base import BaseStore
+from langgraph.types import Command, interrupt
 
 from react_agent.state import InputState, State
 from react_agent.custom_get_rate_tool import get_rate
 from react_agent.upsert_memory import upsert_memory
 from react_agent.configuration import Configuration
 from react_agent.utils import load_chat_model
-
 
 
 # Define the function that calls the model
@@ -110,7 +112,6 @@ async def recommend_product(state: State) -> Dict[str, List[AIMessage]]:
         system_time=datetime.now(tz=UTC).isoformat()
     )
 
-
     # Get the model's response
     response = cast(
         AIMessage,
@@ -152,6 +153,7 @@ async def store_memory(state: State, config: RunnableConfig, *, store: BaseStore
     ]
     return {"messages": results}
 
+
 # Define a new graph
 
 builder = StateGraph(
@@ -170,7 +172,32 @@ builder.add_node("store_memory", store_memory)
 builder.add_edge("__start__", "call_model")
 
 
-def route_model_output(state: State) -> Literal["__end__", "get_rate", "store_memory"]:
+def approve_memory_store(state: State) -> Command[Literal["store_memory", "__end__"]]:
+    decision = interrupt({
+        "question": "Would you like to save scenarios?",
+    })
+    logging.info(f"Decision made: {decision}")
+    if decision.lower() == "Yes":
+        return Command(goto="store_memory")
+    else:
+        # Don't create edges from this node to the end or store_memory because
+        # it will directly store_memory whatever we pass here as Command goto
+        # https://langchain-ai.github.io/langgraph/how-tos/human_in_the_loop/review-tool-calls/#simple-usage
+        last_message = state.messages[-1]
+        tool_call = last_message.tool_calls[-1]
+        tool_message = {
+            "role": "tool",
+            "content": "Memory not created",
+            "name": tool_call["name"],
+            "tool_call_id": tool_call["id"],
+        }
+        return Command(goto=END, update={"messages": [tool_message]})
+
+
+builder.add_node("approve_memory_store", approve_memory_store)
+
+
+def route_model_output(state: State) -> Literal["__end__", "get_rate", "approve_memory_store"]:
     """Determine the next node based on the model's output.
 
     This function checks if the model's last message contains tool calls.
@@ -187,12 +214,12 @@ def route_model_output(state: State) -> Literal["__end__", "get_rate", "store_me
             f"Expected AIMessage in output edges, but got {type(last_message).__name__}"
         )
     if not last_message.tool_calls:
-        return "__end__"
+        return END
     if last_message.tool_calls[0]["name"] == "get_rate":
         return "get_rate"
     if last_message.tool_calls[0]["name"] == "upsert_memory":
-        return "store_memory"
-    return "__end__"
+        return "approve_memory_store"
+    return END
 
 
 # Add a conditional edge to determine the next step after `call_model`
@@ -204,8 +231,8 @@ builder.add_conditional_edges(
 )
 
 # This creates a cycle: after using tools, we always return to the model
-builder.add_edge("get_rate", "__end__")
-builder.add_edge("store_memory", "__end__")
+builder.add_edge("get_rate", END)
+builder.add_edge("store_memory", END)
 
 # Compile the builder into an executable graph
 graph = builder.compile(
