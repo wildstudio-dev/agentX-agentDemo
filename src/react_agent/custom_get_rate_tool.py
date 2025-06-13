@@ -126,12 +126,13 @@ def get_rate(
                 Principal & Interest: ${round(monthly_principal_interest, 2)}
                 Property Taxes: ${round(monthly_tax, 2)}
                 Insurance: ${round(monthly_insurance, 2)}
+                Mortgage Insurance Premium: ${round(mip, 2)}
             </breakdown>
         
             <assumptions>
             • Credit Score (FICO Score): ${fico_score}
             • Down Payment: ${round(down_payment, 2)}
-            • Loan Type: {loan_type.value.capitalize()}
+            • Loan Type: {loan_type.value == LoanType.CONVENTIONAL.value and "Conventional" or "FHA"}
             • Property Type: Primary Residence
             • Loan Amount: ${round(loan_amount, 2)}
             </assumptions>
