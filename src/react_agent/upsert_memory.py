@@ -40,4 +40,4 @@ async def upsert_memory(
         key=str(mem_id),
         value={"content": content, "context": context},
     )
-    return f"Stored memory {mem_id}"
+    return f"Stored memory: {content} - {context}"

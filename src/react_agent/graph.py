@@ -152,6 +152,7 @@ async def store_memory(state: State, config: RunnableConfig, *, store: BaseStore
             "role": "tool",
             "content": mem,
             "tool_call_id": tc["id"],
+            "name": tc["name"],
         }
         for tc, mem in zip(tool_calls, saved_memories)
     ]
