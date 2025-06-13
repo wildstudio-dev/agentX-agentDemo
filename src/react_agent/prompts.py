@@ -30,12 +30,12 @@ For the response as
     Insurance: $156
   </breakdown>
   
-  <parameters>
+  <assumptions>
     • Credit Score (FICO Score): 720
     • Down Payment: 20% ($124,980)
     • Loan Type: Conventional
     • Property Type: Primary Residence
     • Loan Amount: $499,920
-  </parameters>
+  </assumptions>
 </rate-calculation>
 """

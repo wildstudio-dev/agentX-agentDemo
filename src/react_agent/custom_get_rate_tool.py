@@ -128,12 +128,12 @@ def get_rate(
                 Insurance: ${round(monthly_insurance, 2)}
             </breakdown>
         
-            <parameters>
+            <assumptions>
             • Credit Score (FICO Score): ${fico_score}
             • Down Payment: ${round(down_payment, 2)}
             • Loan Type: {loan_type.value.capitalize()}
             • Property Type: Primary Residence
             • Loan Amount: ${round(loan_amount, 2)}
-            </parameters>
+            </assumptions>
         </rate-calculation>
     """

@@ -44,12 +44,16 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
     """Extract the user's state from the conversation and update the memory."""
     configurable = Configuration.from_runnable_config(config)
 
-    # Retrieve the most recent memories for context
-    memories = await store.asearch(
-        ("memories", configurable.user_id if configurable.user_id else "default"),
-        query=str([m.content for m in state.messages[-3:]]),
-        limit=10,
-    )
+    memories = []
+    try:
+        memories = await store.asearch(
+            ("memories", configurable.user_id if configurable.user_id else "default"),
+            query=str([m.content for m in state.messages[-3:]]),
+            limit=10,
+        )
+        logging.info(f"Retrieved memories: {memories}")
+    except Exception as e:
+        logging.error(f"Error retrieving memories: {e}")
 
     # Format memories for inclusion in the prompt
     formatted = "\n".join(f"[{mem.key}]: {mem.value} (similarity: {mem.score})" for mem in memories)
@@ -82,7 +86,6 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
                 )
             ]
         }
-
     # Return the model's response as a list to be added to existing messages
     return {"messages": [response]}
 
@@ -99,9 +102,6 @@ async def recommend_product(state: State) -> Dict[str, List[AIMessage]]:
     Returns:
         dict: A dictionary containing the model's response message.
     """
-
-    # logging.info(state.messages[-1])
-
     configuration = Configuration.from_context()
 
     # Initialize the model with tool binding. Change the model or add more tools here.
@@ -126,7 +126,11 @@ async def recommend_product(state: State) -> Dict[str, List[AIMessage]]:
 
 async def store_memory(state: State, config: RunnableConfig, *, store: BaseStore):
     # Extract tool calls from the last message
-    tool_calls = state.messages[-1].tool_calls
+    if not state.messages:
+        logging.error("No messages found in the state.")
+        return {"messages": []}
+    last_message = state.messages[-1]
+    tool_calls = last_message.tool_calls
     upsert_memory_calls = [
         tc
         for tc in tool_calls
@@ -174,15 +178,16 @@ builder.add_edge("__start__", "call_model")
 
 def approve_memory_store(state: State) -> Command[Literal["store_memory", "__end__"]]:
     decision = interrupt({
-        "question": "Would you like to save scenarios?",
+        "question": "Would you like to save scenario?",
     })
     logging.info(f"Decision made: {decision}")
-    if decision.lower() == "Yes":
+    if decision == "Yes":
         return Command(goto="store_memory")
     else:
         # Don't create edges from this node to the end or store_memory because
         # it will directly store_memory whatever we pass here as Command goto
         # https://langchain-ai.github.io/langgraph/how-tos/human_in_the_loop/review-tool-calls/#simple-usage
+        # https://langchain-ai.github.io/langgraph/how-tos/human_in_the_loop/add-human-in-the-loop/#approve-or-reject
         last_message = state.messages[-1]
         tool_call = last_message.tool_calls[-1]
         tool_message = {
