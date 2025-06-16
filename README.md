@@ -87,6 +87,11 @@ End setup instructions
 3. Customize whatever you'd like in the code.
 4. Open the folder LangGraph Studio!
 
+## Security
+https://langchain-ai.github.io/langgraph/tutorials/auth/add_auth_server/#3-implement-token-validation
+/security/auth.py keep the token validation logic for the agent. This is used to validate the token passed in the request header.
+langgraph.json has the auth server file configured, so you can use the auth file to validate the token.
+
 ## How to customize
 
 1. **Add new tools**: Extend the agent's capabilities by adding new tools in [tools.py](./src/react_agent/tools.py). These can be any Python functions that perform specific tasks.

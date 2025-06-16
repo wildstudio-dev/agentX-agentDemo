@@ -124,7 +124,12 @@ async def recommend_product(state: State) -> Dict[str, List[AIMessage]]:
     return {"messages": [response]}
 
 
-async def store_memory(state: State, config: RunnableConfig, *, store: BaseStore):
+async def store_memory(
+        state: State,
+        config: RunnableConfig,
+        *,
+        store: BaseStore
+):
     # Extract tool calls from the last message
     if not state.messages:
         logging.error("No messages found in the state.")

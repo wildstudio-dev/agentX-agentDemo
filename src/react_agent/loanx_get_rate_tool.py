@@ -130,7 +130,6 @@ async def get_rate(
                 "dti": 0.69,
                 "income": 7000
             }
-    # logging.info(f"get_rate: {data}")
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=data) as response:
