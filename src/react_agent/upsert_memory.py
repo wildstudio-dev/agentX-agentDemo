@@ -1,5 +1,4 @@
 """Define he agent's tools."""
-import logging
 import uuid
 from typing import Annotated, Optional
 
@@ -33,7 +32,6 @@ async def upsert_memory(
         memory_id: ONLY PROVIDE IF UPDATING AN EXISTING MEMORY.
         The memory to overwrite.
     """
-    logging.info("Config", config)
     mem_id = memory_id or uuid.uuid4()
     local_config = Configuration.from_runnable_config(config)
     user_id = local_config.user_id

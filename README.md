@@ -91,8 +91,8 @@ End setup instructions
 https://langchain-ai.github.io/langgraph/tutorials/auth/add_auth_server/#3-implement-token-validation
 /security/auth.py keep the token validation logic for the agent. This is used to validate the token passed in the request header.
 langgraph.json has the auth server file configured, so you can use the auth file to validate the token.
-We can use add_owner to set default filters for that user and as well we can use the user_id to filter
-when needed during process time.
+We can use add_owner to set default filters for the user and as well we can use the user_id to filter
+when needed during runtime time.
 
 ## How to customize
 
