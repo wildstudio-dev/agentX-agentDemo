@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass, field, fields
 from typing import Annotated, Optional, Any
@@ -50,6 +51,7 @@ class Configuration:
 
     @classmethod
     def from_context(cls) -> Configuration:
+        # TODO: This and the bottom function are more or less the same
         """Create a Configuration instance from a RunnableConfig object."""
         try:
             config = get_config()
@@ -68,6 +70,10 @@ class Configuration:
         configurable = (
             config["configurable"] if config and "configurable" in config else {}
         )
+        # This querying configurable and checks if the fields here are present
+        # in configurable and passes their value along.
+        # Owner is present in metadata not in the configurable, so it won't be present
+        # But user_id is set internally and its present in configurable and would be passed
         values: dict[str, Any] = {
             f.name: os.environ.get(f.name.upper(), configurable.get(f.name))
             for f in fields(cls)

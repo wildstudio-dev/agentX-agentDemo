@@ -36,10 +36,9 @@ async def upsert_memory(
     logging.info("Config", config)
     mem_id = memory_id or uuid.uuid4()
     local_config = Configuration.from_runnable_config(config)
-    logging.info("Localconfig", local_config)
     user_id = local_config.user_id
     await store.aput(
-        ("memories", user_id if user_id else "default"),
+        ("memories", user_id),
         key=str(mem_id),
         value={"content": content, "context": context},
     )
