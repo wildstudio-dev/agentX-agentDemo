@@ -1,5 +1,4 @@
 """Define he agent's tools."""
-
 import uuid
 from typing import Annotated, Optional
 
@@ -34,9 +33,10 @@ async def upsert_memory(
         The memory to overwrite.
     """
     mem_id = memory_id or uuid.uuid4()
-    user_id = Configuration.from_runnable_config(config).user_id
+    local_config = Configuration.from_runnable_config(config)
+    user_id = local_config.user_id
     await store.aput(
-        ("memories", user_id if user_id else "default"),
+        ("memories", user_id),
         key=str(mem_id),
         value={"content": content, "context": context},
     )

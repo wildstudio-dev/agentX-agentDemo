@@ -47,7 +47,7 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
     memories = []
     try:
         memories = await store.asearch(
-            ("memories", configurable.user_id if configurable.user_id else "default"),
+            ("memories", configurable.user_id),
             query=str([m.content for m in state.messages[-3:]]),
             limit=10,
         )
@@ -124,7 +124,12 @@ async def recommend_product(state: State) -> Dict[str, List[AIMessage]]:
     return {"messages": [response]}
 
 
-async def store_memory(state: State, config: RunnableConfig, *, store: BaseStore):
+async def store_memory(
+        state: State,
+        config: RunnableConfig,
+        *,
+        store: BaseStore
+):
     # Extract tool calls from the last message
     if not state.messages:
         logging.error("No messages found in the state.")
