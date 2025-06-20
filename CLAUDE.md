@@ -36,6 +36,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 2. **Memory Integration**: Agent retrieves semantic memories via vector store and can save new memories
 3. **Tool Execution**: Currently supports `get_rate` (loan calculations) and `upsert_memory` (memory storage)
 4. **Human-in-the-Loop**: Memory storage requires approval via `approve_memory_store` interrupt
+5. **Multimodal Support**: Native handling of images and documents via GPT-4's vision capabilities
 
 ### Tools
 - `src/react_agent/custom_get_rate_tool.py` - Mortgage rate calculator with loan limits validation
@@ -43,6 +44,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - Handles natural language currency formats and real estate terminology
 - `src/react_agent/upsert_memory.py` - Memory storage functionality for user context
 - Supports both Conventional and FHA loan types with different limits and requirements
+
+### Multimodal File Handling
+- `src/react_agent/file_handler.py` - Native multimodal file processing
+  - **Images**: Sent directly to GPT-4 for visual analysis
+  - **PDFs**: Converted to images to preserve formatting and visual elements
+  - **Text files**: Included as text content in messages
+- Files are processed in-conversation without storage
+- See `FILE_HANDLING.md` for detailed documentation
 
 ### Authentication & Security
 - `src/react_agent/security/auth.py` - JWT token validation with bearer scheme
@@ -73,7 +82,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - FHA loans: includes MIP (0.85% annually), different loan limits
 - Default assumptions: 7.5% interest, 30-year term, 760 FICO, 20% down payment
 
+### File Handling System
+- Automatic processing of uploaded files at conversation start
+- Supports PDF, CSV, JSON, text, and image files
+- File contents are extracted and included in agent context
+- Files are passed via state: `{"files": [{"filename": "...", "path": "...", "content_type": "...", "size": ...}]}`
+- Processed contents stored in `state.file_contents` dictionary
+
 ### Testing Structure
 - Unit tests: `tests/unit_tests/` with configuration testing
 - Integration tests: `tests/integration_tests/` with graph execution testing  
+- File processing tests: `tests/integration_tests/test_file_processing.py`
 - VCR cassettes in `tests/cassettes/` for API interaction recording

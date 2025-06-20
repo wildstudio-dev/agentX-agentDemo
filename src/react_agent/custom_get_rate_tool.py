@@ -1,6 +1,6 @@
 import re
 from enum import Enum
-from typing import Union
+from typing import Union, Optional
 
 # https://singlefamily.fanniemae.com/originating-underwriting/loan-limits
 CONVENTIONAL_LOAN_LIMITS = [806500, 1032650, 1248150, 1551250]
@@ -73,30 +73,30 @@ class LoanType(Enum):
 
 
 def get_rate(
-        home_price=None,
-        loan_type=LoanType.CONVENTIONAL,
-        units=1,
-        down_payment=None,
-        annual_interest_rate=7.5,
-        loan_term_years=30,
-        loan_amount=None,
-        annual_property_tax=None,
-        annual_home_insurance=None,
-        fico_score=760
+        home_price: Optional[Union[str, int, float]] = None,
+        loan_type: Union[LoanType, str] = LoanType.CONVENTIONAL,
+        units: int = 1,
+        down_payment: Optional[Union[str, int, float]] = None,
+        annual_interest_rate: float = 7.5,
+        loan_term_years: int = 30,
+        loan_amount: Optional[Union[str, int, float]] = None,
+        annual_property_tax: Optional[Union[str, int, float]] = None,
+        annual_home_insurance: Optional[Union[str, int, float]] = None,
+        fico_score: int = 760
 ):
     """Calculate monthly mortgage payments with detailed breakdown. This is my primary tool for helping real estate professionals get instant rate quotes. I can handle flexible input formats and provide comprehensive payment analysis.
     
     Args:
-        home_price (Union[str, int, float]): The price of the home. Accepts various formats like "$500,000", "500k", "500 thousand".
-        loan_type (LoanType): The type of loan, either 'conventional' or 'fha'. Defaults to 'conventional'.
-        units (int): The number of units in the property. Defaults to 1.
-        down_payment (Union[str, int, float]): The down payment amount. Accepts formats like "20,000", "20k", "20 grand".
-        annual_interest_rate (float): The annual interest rate as a percentage. Defaults to 7.5%.
-        loan_term_years (int): The term of the loan in years. Defaults to 30 years.
-        loan_amount (Union[str, int, float]): The amount of the loan. Accepts various formats.
-        annual_property_tax (Union[str, int, float]): The annual property tax amount.
-        annual_home_insurance (Union[str, int, float]): The annual home insurance amount.
-        fico_score (int): The FICO score of the borrower. Defaults to 760.
+        home_price: The price of the home. Accepts various formats like "$500,000", "500k", "500 thousand".
+        loan_type: The type of loan, either 'conventional' or 'fha'. Defaults to 'conventional'.
+        units: The number of units in the property. Defaults to 1.
+        down_payment: The down payment amount. Accepts formats like "20,000", "20k", "20 grand".
+        annual_interest_rate: The annual interest rate as a percentage. Defaults to 7.5%.
+        loan_term_years: The term of the loan in years. Defaults to 30 years.
+        loan_amount: The amount of the loan. Accepts various formats.
+        annual_property_tax: The annual property tax amount.
+        annual_home_insurance: The annual home insurance amount.
+        fico_score: The FICO score of the borrower. Defaults to 760.
     """
 
     # Parse input values with error handling
