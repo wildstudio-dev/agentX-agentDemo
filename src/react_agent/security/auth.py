@@ -32,7 +32,7 @@ async def add_owner(
     ctx: Auth.types.AuthContext,
     value: dict
     ):
-    logging.info("Adding owner to resource with context: %s %s", ctx)
+    logging.info("Adding owner to resource with context: %s", ctx)
     """Makes resources private to the user."""
     # User id is set in the authentication is a good practice but we need to add the filtering
     # here as well

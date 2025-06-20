@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Sequence
+from typing import Sequence, Dict, List, Any, Optional
 
 from langchain_core.messages import AnyMessage
 from langgraph.graph import add_messages
@@ -36,6 +36,17 @@ class InputState:
     The `add_messages` annotation ensures that new messages are merged with existing ones,
     updating by ID to maintain an "append-only" state unless a message with the same ID is provided.
     """
+    
+    attachments: List[Dict[str, Any]] = field(default_factory=list)
+    """
+    List of file attachments for multimodal processing.
+    Each attachment dict contains:
+    - filename: str - The name of the file
+    - content_type: str - MIME type of the file
+    - size: int - File size in bytes
+    - data: str - Base64 encoded file content (for images/PDFs)
+    - text: Optional[str] - Text content (for text files)
+    """
 
 
 @dataclass
@@ -52,9 +63,4 @@ class State(InputState):
     This is a 'managed' variable, controlled by the state machine rather than user code.
     It is set to 'True' when the step count reaches recursion_limit - 1.
     """
-
-    # Additional attributes can be added here as needed.
-    # Common examples include:
-    # retrieved_documents: List[Document] = field(default_factory=list)
-    # extracted_entities: Dict[str, Any] = field(default_factory=dict)
-    # api_connections: Dict[str, Any] = field(default_factory=dict)
+    

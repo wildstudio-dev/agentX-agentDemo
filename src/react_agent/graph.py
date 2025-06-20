@@ -5,7 +5,7 @@ Works with a chat model with tool calling support.
 import asyncio
 import logging
 from datetime import UTC, datetime
-from typing import Dict, List, Literal, cast
+from typing import Any, Dict, List, Literal, cast
 
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig
@@ -20,6 +20,8 @@ from react_agent.custom_get_rate_tool import get_rate
 from react_agent.upsert_memory import upsert_memory
 from react_agent.configuration import Configuration
 from react_agent.utils import load_chat_model
+from react_agent.file_handler import format_multimodal_message, is_real_estate_document
+from react_agent.prompts import REAL_ESTATE_DOC_PROMPT
 
 
 # Define the function that calls the model
@@ -62,18 +64,45 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
     <memories>
     {formatted}
     </memories>"""
-
+    
     system_message = configuration.system_prompt.format(
         system_time=datetime.now(tz=UTC).isoformat(),
         memories=formatted,
     )
 
+    # Prepare messages with multimodal support
+    messages_to_send = [{"role": "system", "content": system_message}]
+    
+    # Process messages and handle attachments
+    for i, msg in enumerate(state.messages):
+        # Check if this is the most recent user message with attachments
+        if (hasattr(msg, 'type') and msg.type == "human" and 
+            state.attachments and i == len(state.messages) - 1):
+            # Log attachment information
+            logging.info(f"Processing {len(state.attachments)} attachments for message")
+            for att in state.attachments:
+                logging.info(f"Attachment: {att.get('filename', 'unknown')} - {att.get('content_type', 'unknown')} - {att.get('size', 0)} bytes")
+                if att.get('content_type') == 'application/pdf':
+                    has_data = bool(att.get('data'))
+                    logging.info(f"PDF attachment has data: {has_data}, data length: {len(att.get('data', '')) if has_data else 0}")
+            
+            # Format as multimodal message
+            multimodal_content = format_multimodal_message(
+                msg.content if hasattr(msg, 'content') else str(msg), 
+                state.attachments
+            )
+            messages_to_send.append({
+                "role": "user",
+                "content": multimodal_content
+            })
+        else:
+            # Regular message - append as is
+            messages_to_send.append(msg)
+
     # Get the model's response
     response = cast(
         AIMessage,
-        await model.ainvoke(
-            [{"role": "system", "content": system_message}, *state.messages]
-        ),
+        await model.ainvoke(messages_to_send),
     )
 
     # Handle the case when it's the last step and the model still wants to use a tool
@@ -124,6 +153,8 @@ async def recommend_product(state: State) -> Dict[str, List[AIMessage]]:
     return {"messages": [response]}
 
 
+
+
 async def store_memory(
         state: State,
         config: RunnableConfig,
@@ -172,14 +203,13 @@ builder = StateGraph(
     config_schema=Configuration,
 )
 
-# Define the two nodes we will cycle between
+# Define the nodes
 builder.add_node(call_model)
 builder.add_node("get_rate", ToolNode([get_rate]))
 builder.add_node("store_memory", store_memory)
 
-# Set the entrypoint as `call_model`
-# This means that this node is the first one called
-builder.add_edge("__start__", "call_model")
+# Set the entrypoint - directly call model since files are handled in messages
+builder.set_entry_point("call_model")
 
 
 def approve_memory_store(state: State) -> Command[Literal["store_memory", "__end__"]]:
@@ -217,7 +247,7 @@ def route_model_output(state: State) -> Literal["__end__", "get_rate", "approve_
         state (State): The current state of the conversation.
 
     Returns:
-        str: The name of the next node to call ("__end__" or "get_rate" or "store_memory").
+        str: The name of the next node to call.
     """
     last_message = state.messages[-1]
     if not isinstance(last_message, AIMessage):
@@ -226,9 +256,11 @@ def route_model_output(state: State) -> Literal["__end__", "get_rate", "approve_
         )
     if not last_message.tool_calls:
         return END
-    if last_message.tool_calls[0]["name"] == "get_rate":
+    
+    tool_name = last_message.tool_calls[0]["name"]
+    if tool_name == "get_rate":
         return "get_rate"
-    if last_message.tool_calls[0]["name"] == "upsert_memory":
+    elif tool_name == "upsert_memory":
         return "approve_memory_store"
     return END
 
