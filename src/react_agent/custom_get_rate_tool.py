@@ -167,9 +167,8 @@ def get_rate(
     ltv = loan_amount / home_price
 
     if ltv > 0.95 and loan_type == LoanType.CONVENTIONAL:
-        return {
-            "error": "Loan-to-value ratio exceeds 95%. Conventional loans require a maximum LTV of 95%."
-        }
+        # Switch to FHA loan which allows up to 96.5% LTV
+        loan_type = LoanType.FHA
 
     monthly_interest_rate = annual_interest_rate / 12 / 100
     total_payments = loan_term_years * 12
