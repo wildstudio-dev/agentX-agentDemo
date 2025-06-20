@@ -1,4 +1,6 @@
+import re
 from enum import Enum
+from typing import Union
 
 # https://singlefamily.fanniemae.com/originating-underwriting/loan-limits
 CONVENTIONAL_LOAN_LIMITS = [806500, 1032650, 1248150, 1551250]
@@ -10,6 +12,59 @@ LOAN_LIMITS = {
     "conventional": CONVENTIONAL_LOAN_LIMITS,
     "fha": FHA_LOAN_LIMITS
 }
+
+
+def parse_currency_amount(value: Union[str, int, float]) -> float:
+    """Parse various currency input formats into a float.
+    
+    Handles formats like:
+    - 20000, 20,000, $20,000
+    - "20k", "20K", "20 thousand"
+    - "20 grand", "20 down"
+    - Percentages like "20%" (returns as decimal)
+    """
+    if isinstance(value, (int, float)):
+        return float(value)
+    
+    if not isinstance(value, str):
+        raise ValueError(f"Cannot parse currency amount from {type(value)}")
+    
+    # Clean up the string
+    value = value.strip().lower()
+    
+    # Handle percentage inputs
+    if '%' in value:
+        num = re.findall(r'[\d.]+', value)[0] if re.findall(r'[\d.]+', value) else '0'
+        return float(num) / 100.0
+    
+    # Remove common currency symbols and words
+    value = re.sub(r'[$,]', '', value)
+    value = re.sub(r'\b(dollars?|bucks?|down|payment)\b', '', value)
+    
+    # Handle shorthand notations
+    multiplier = 1
+    if re.search(r'\b(k|thousand|grand)\b', value):
+        multiplier = 1000
+        value = re.sub(r'\b(k|thousand|grand)\b', '', value)
+    elif re.search(r'\b(m|million|mil)\b', value):
+        multiplier = 1000000
+        value = re.sub(r'\b(m|million|mil)\b', '', value)
+    
+    # Handle case where suffixes are directly attached to numbers (e.g., "20k", "1.5m")
+    k_match = re.search(r'(\d+(?:\.\d+)?)k\b', value)
+    if k_match:
+        return float(k_match.group(1)) * 1000
+    
+    m_match = re.search(r'(\d+(?:\.\d+)?)m\b', value)
+    if m_match:
+        return float(m_match.group(1)) * 1000000
+    
+    # Extract the numeric part
+    numbers = re.findall(r'[\d.]+', value.strip())
+    if not numbers:
+        raise ValueError(f"No numeric value found in: {value}")
+    
+    return float(numbers[0]) * multiplier
 
 
 class LoanType(Enum):
@@ -29,29 +84,57 @@ def get_rate(
         annual_home_insurance=None,
         fico_score=760
 ):
-    """This function estimates monthly payments for a conventional loan. It requires either a home price or a loan amount, and calculates the monthly payment based on the provided parameters.
+    """Calculate monthly mortgage payments with detailed breakdown. This is my primary tool for helping real estate professionals get instant rate quotes. I can handle flexible input formats and provide comprehensive payment analysis.
+    
     Args:
-        home_price (float): The price of the home. If not provided, it will be calculated based on the loan amount and a default down payment.
+        home_price (Union[str, int, float]): The price of the home. Accepts various formats like "$500,000", "500k", "500 thousand".
         loan_type (LoanType): The type of loan, either 'conventional' or 'fha'. Defaults to 'conventional'.
         units (int): The number of units in the property. Defaults to 1.
-        down_payment (float): The down payment amount. If not provided, it defaults to 20% of the home price.
+        down_payment (Union[str, int, float]): The down payment amount. Accepts formats like "20,000", "20k", "20 grand".
         annual_interest_rate (float): The annual interest rate as a percentage. Defaults to 7.5%.
         loan_term_years (int): The term of the loan in years. Defaults to 30 years.
-        loan_amount (float): The amount of the loan. If not provided, it will be calculated based on the home price and down payment.
-        annual_property_tax (float): The annual property tax amount. If not provided, it defaults to 0.65% of the home price.
-        annual_home_insurance (float): The annual home insurance amount. If not provided, it defaults to 0.2% of the home price.
+        loan_amount (Union[str, int, float]): The amount of the loan. Accepts various formats.
+        annual_property_tax (Union[str, int, float]): The annual property tax amount.
+        annual_home_insurance (Union[str, int, float]): The annual home insurance amount.
         fico_score (int): The FICO score of the borrower. Defaults to 760.
     """
+
+    # Parse input values with error handling
+    try:
+        if home_price is not None:
+            home_price = parse_currency_amount(home_price)
+        if loan_amount is not None:
+            loan_amount = parse_currency_amount(loan_amount)
+        if down_payment is not None:
+            down_payment = parse_currency_amount(down_payment)
+        if annual_property_tax is not None:
+            annual_property_tax = parse_currency_amount(annual_property_tax)
+        if annual_home_insurance is not None:
+            annual_home_insurance = parse_currency_amount(annual_home_insurance)
+    except ValueError as e:
+        return {
+            "error": f"Invalid input format: {str(e)}. Please provide numbers in formats like '500000', '$500,000', '500k', or '500 thousand'."
+        }
 
     if home_price is None and loan_amount is None:
         return {
             "error": "Either home_price or loan_amount must be provided."
         }
 
-    # Validate loan type
+    # Validate and normalize loan type
     if not isinstance(loan_type, LoanType):
         try:
-            loan_type = LoanType(loan_type)
+            # Handle string inputs with flexible matching
+            if isinstance(loan_type, str):
+                loan_type_lower = loan_type.lower().strip()
+                if loan_type_lower in ['conventional', 'conv', 'conforming']:
+                    loan_type = LoanType.CONVENTIONAL
+                elif loan_type_lower in ['fha']:
+                    loan_type = LoanType.FHA
+                else:
+                    loan_type = LoanType(loan_type)
+            else:
+                loan_type = LoanType(loan_type)
         except ValueError:
             return {
                 "error": "Invalid loan type. Must be 'conventional' or 'fha'."
