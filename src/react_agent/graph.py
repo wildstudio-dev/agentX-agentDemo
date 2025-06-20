@@ -214,7 +214,7 @@ builder.set_entry_point("call_model")
 
 def approve_memory_store(state: State) -> Command[Literal["store_memory", "__end__"]]:
     decision = interrupt({
-        "question": "Would you like to save scenario?",
+        "question": "Would you like to save preference?",
     })
     logging.info(f"Decision made: {decision}")
     if decision == "Yes":
