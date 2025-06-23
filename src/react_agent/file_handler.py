@@ -2,7 +2,7 @@
 
 import base64
 import mimetypes
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional
 from pathlib import Path
 import tempfile
 import os
@@ -32,49 +32,6 @@ except ImportError:
     logger.warning("PyPDF2 not available - PDF text extraction will be limited")
 
 
-def is_real_estate_document(filename: str, content: str = "") -> Tuple[bool, str]:
-    """
-    Detect if a document is real estate related and identify its type.
-    
-    Args:
-        filename: Name of the file
-        content: Text content of the file (if available)
-        
-    Returns:
-        Tuple of (is_real_estate_doc, document_type)
-    """
-    filename_lower = filename.lower()
-    content_lower = content.lower() if content else ""
-    
-    # Common real estate document patterns
-    doc_patterns = {
-        "listing": ["listing", "mls", "property listing", "for sale"],
-        "purchase_agreement": ["purchase agreement", "sales contract", "offer to purchase", "purchase and sale"],
-        "loan_estimate": ["loan estimate", "le ", "closing disclosure", "cd "],
-        "appraisal": ["appraisal", "property valuation", "appraised value"],
-        "inspection": ["inspection report", "property inspection", "home inspection"],
-        "title": ["title report", "title insurance", "preliminary title"],
-        "disclosure": ["disclosure", "property disclosure", "seller disclosure"],
-        "hoa": ["hoa", "homeowners association", "condo association"],
-        "lease": ["lease agreement", "rental agreement", "lease contract"],
-        "mortgage": ["mortgage", "deed of trust", "promissory note"]
-    }
-    
-    # Check filename and content for patterns
-    for doc_type, patterns in doc_patterns.items():
-        for pattern in patterns:
-            if pattern in filename_lower or (content and pattern in content_lower):
-                return True, doc_type
-    
-    # Check for real estate keywords in content
-    if content:
-        re_keywords = ["property", "real estate", "square feet", "bedrooms", "bathrooms", 
-                      "listing price", "purchase price", "closing date", "escrow"]
-        keyword_count = sum(1 for keyword in re_keywords if keyword in content_lower)
-        if keyword_count >= 3:
-            return True, "real_estate_document"
-    
-    return False, ""
 
 
 def process_attachments_for_multimodal(attachments: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -112,75 +69,62 @@ def process_attachments_for_multimodal(attachments: List[Dict[str, Any]]) -> Lis
                 logger.error(f"No data found for PDF attachment: {filename}")
                 content_blocks.append({
                     "type": "text",
-                    "text": f"=== PDF ERROR: {filename} - No data provided ===\n\nThe PDF file appears to be empty or data was not transmitted correctly."
+                    "text": f"[PDF file {filename} could not be processed - no data]"
                 })
             else:
-                # PDFs need to be converted to images for GPT-4
-                pdf_images = convert_pdf_to_images(pdf_data)
+                # Check approximate token size (base64 length / 4)
+                estimated_tokens = len(pdf_data) / 4
+                logger.info(f"PDF {filename} estimated tokens: {estimated_tokens}")
                 
-                if pdf_images:
-                    # Add each page as an image
-                    for i, img_base64 in enumerate(pdf_images):
-                        content_blocks.append({
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/png;base64,{img_base64}"
-                            }
-                        })
-                    # Add a text note about the PDF
-                    # Check if filename suggests real estate document
-                    is_re_doc, doc_type = is_real_estate_document(filename)
-                    if is_re_doc:
-                        content_blocks.append({
-                            "type": "text",
-                            "text": f"=== {doc_type.replace('_', ' ').title().upper()} PDF: {filename} ({len(pdf_images)} pages) ===\n\nAnalyze the real estate document shown in the images above and provide a structured summary including:\n• Document type and purpose\n• Key property details (address, price, type, size)\n• Financial information (loan amounts, payments, rates)\n• Important dates and deadlines\n• Critical terms or action items for the agent"
-                        })
-                    else:
-                        content_blocks.append({
-                            "type": "text",
-                            "text": f"=== PDF: {filename} ({len(pdf_images)} pages shown above) ==="
-                        })
-                else:
-                    # Try text extraction as fallback
-                    logger.info("PDF image conversion failed, attempting text extraction")
+                if estimated_tokens > 15000:  # Use text extraction for large files
+                    logger.info("PDF too large for image conversion, using text extraction")
                     extracted_text = extract_pdf_text(pdf_data)
                     
                     if extracted_text:
-                        # We got text, use it
-                        is_re_doc, doc_type = is_real_estate_document(filename, extracted_text)
-                        
-                        if is_re_doc:
-                            content_blocks.append({
-                                "type": "text",
-                                "text": f"=== {doc_type.replace('_', ' ').title().upper()} PDF: {filename} (TEXT ONLY) ===\n\nNote: PDF visual elements could not be processed. Showing extracted text only.\n\n{extracted_text}\n\n---\nAnalyze this real estate document and provide a structured summary including:\n• Document type and purpose\n• Key property details (address, price, type, size)\n• Financial information (loan amounts, payments, rates)\n• Important dates and deadlines\n• Critical terms or action items for the agent"
-                            })
-                        else:
-                            content_blocks.append({
-                                "type": "text",
-                                "text": f"=== PDF: {filename} (TEXT ONLY) ===\n\nNote: PDF visual elements could not be processed. Showing extracted text only.\n\n{extracted_text}"
-                            })
-                    else:
-                        # Provide detailed error information
-                        error_msg = f"=== PDF ERROR: {filename} ===\n\n"
-                        if not PDF_SUPPORT and not PYPDF2_SUPPORT:
-                            error_msg += "PDF processing is not available. Neither pypdfium2 nor PyPDF2 are installed.\n"
-                            error_msg += "Please install one of them with:\n"
-                            error_msg += "• pip install pypdfium2 (recommended for image conversion)\n"
-                            error_msg += "• pip install PyPDF2 (for text extraction)\n\n"
-                        else:
-                            error_msg += "Unable to process PDF. Possible reasons:\n"
-                            error_msg += "• The PDF data may be corrupted or invalid\n"
-                            error_msg += "• The base64 encoding may be incorrect\n"
-                            error_msg += "• The PDF may be password protected\n"
-                            error_msg += "• The PDF may contain only images without text\n\n"
-                        
-                        error_msg += f"File size: {attachment.get('size', 'unknown')} bytes\n"
-                        error_msg += "Please check the logs for more detailed error information."
-                        
+                        # Truncate if needed
+                        if len(extracted_text) > 30000:
+                            extracted_text = extracted_text[:30000] + "\n\n[Document truncated due to size limit]"
                         content_blocks.append({
                             "type": "text",
-                            "text": error_msg
+                            "text": f"=== PDF Content: {filename} (Text Extracted) ===\n\n{extracted_text}"
                         })
+                    else:
+                        content_blocks.append({
+                            "type": "text",
+                            "text": f"[PDF {filename} is too large for processing (estimated {estimated_tokens:.0f} tokens). Please use a smaller file or extract key pages.]"
+                        })
+                else:
+                    # Try text extraction first for smaller files too
+                    logger.info("Attempting PDF text extraction")
+                    extracted_text = extract_pdf_text(pdf_data)
+                    
+                    if extracted_text and len(extracted_text) > 500:  # If we got meaningful text
+                        content_blocks.append({
+                            "type": "text",
+                            "text": f"=== PDF Content: {filename} ===\n\n{extracted_text}"
+                        })
+                    else:
+                        # Try image conversion as fallback
+                        pdf_images = convert_pdf_to_images(pdf_data)
+                        
+                        if pdf_images:
+                            # Add each page as an image
+                            for i, img_base64 in enumerate(pdf_images):
+                                content_blocks.append({
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:image/png;base64,{img_base64}"
+                                    }
+                                })
+                            content_blocks.append({
+                                "type": "text",
+                                "text": f"[PDF {filename} - {len(pdf_images)} pages shown as images above]"
+                            })
+                        else:
+                            content_blocks.append({
+                                "type": "text",
+                                "text": f"[PDF {filename} could not be processed - unable to extract text or convert to images]"
+                            })
             
         elif content_type.startswith("text/") or content_type in ["application/json", "text/csv"]:
             # Text files can be included directly
@@ -192,19 +136,10 @@ def process_attachments_for_multimodal(attachments: List[Dict[str, Any]]) -> Lis
                 except Exception:
                     text_content = f"[Unable to decode {filename}]"
                     
-            # Check if it's a real estate document
-            is_re_doc, doc_type = is_real_estate_document(filename, text_content)
-            
-            if is_re_doc:
-                content_blocks.append({
-                    "type": "text", 
-                    "text": f"=== {doc_type.replace('_', ' ').title().upper()}: {filename} ===\n\n{text_content}\n\n---\nAnalyze this real estate document above and provide a structured summary including:\n• Document type and purpose\n• Key property details (address, price, type, size)\n• Financial information (loan amounts, payments, rates)\n• Important dates and deadlines\n• Critical terms or action items for the agent"
-                })
-            else:
-                content_blocks.append({
-                    "type": "text", 
-                    "text": f"=== FILE: {filename} ===\n\n{text_content}"
-                })
+            content_blocks.append({
+                "type": "text", 
+                "text": f"=== FILE: {filename} ===\n\n{text_content}"
+            })
             
         else:
             # Unsupported file type
@@ -244,7 +179,7 @@ def format_multimodal_message(text: str, attachments: List[Dict[str, Any]]) -> L
     return content
 
 
-def convert_pdf_to_images(pdf_data: str, max_pages: int = 5) -> List[str]:
+def convert_pdf_to_images(pdf_data: str, max_pages: int = 3) -> List[str]:
     """
     Convert PDF to images for GPT-4 processing using pypdfium2.
     
@@ -287,8 +222,8 @@ def convert_pdf_to_images(pdf_data: str, max_pages: int = 5) -> List[str]:
             try:
                 page = pdf[page_num]
                 
-                # Render page at 150 DPI (scale = 150/72)
-                scale = 150 / 72
+                # Render page at 100 DPI (scale = 100/72) to reduce size
+                scale = 100 / 72
                 bitmap = page.render(scale=scale)
                 
                 # Convert to PIL Image

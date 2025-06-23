@@ -7,9 +7,9 @@ import logging
 from datetime import UTC, datetime
 from typing import Any, Dict, List, Literal, cast
 
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
-from langgraph.constants import END
+from langgraph.constants import END, Send
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode
 from langgraph.store.base import BaseStore
@@ -20,8 +20,7 @@ from react_agent.custom_get_rate_tool import get_rate
 from react_agent.upsert_memory import upsert_memory
 from react_agent.configuration import Configuration
 from react_agent.utils import load_chat_model
-from react_agent.file_handler import format_multimodal_message, is_real_estate_document
-from react_agent.prompts import REAL_ESTATE_DOC_PROMPT
+from react_agent.file_handler import format_multimodal_message
 
 
 # Define the function that calls the model
@@ -77,19 +76,13 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
     for i, msg in enumerate(state.messages):
         # Check if this is the most recent user message with attachments
         if (hasattr(msg, 'type') and msg.type == "human" and 
-            state.attachments and i == len(state.messages) - 1):
-            # Log attachment information
-            logging.info(f"Processing {len(state.attachments)} attachments for message")
-            for att in state.attachments:
-                logging.info(f"Attachment: {att.get('filename', 'unknown')} - {att.get('content_type', 'unknown')} - {att.get('size', 0)} bytes")
-                if att.get('content_type') == 'application/pdf':
-                    has_data = bool(att.get('data'))
-                    logging.info(f"PDF attachment has data: {has_data}, data length: {len(att.get('data', '')) if has_data else 0}")
-            
+            hasattr(msg, 'additional_kwargs') and 
+            msg.additional_kwargs.get('attachments') and 
+            i == len(state.messages) - 1):
             # Format as multimodal message
             multimodal_content = format_multimodal_message(
                 msg.content if hasattr(msg, 'content') else str(msg), 
-                state.attachments
+                msg.additional_kwargs['attachments']
             )
             messages_to_send.append({
                 "role": "user",
@@ -272,6 +265,7 @@ builder.add_conditional_edges(
     # based on the output from route_model_output
     route_model_output,
 )
+
 
 # This creates a cycle: after using tools, we always return to the model
 builder.add_edge("get_rate", END)

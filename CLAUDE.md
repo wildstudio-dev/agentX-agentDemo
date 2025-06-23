@@ -33,8 +33,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Key Flows**
 1. **Main Agent Loop**: `call_model` → `route_model_output` → tool execution → back to model
-2. **Memory Integration**: Agent retrieves semantic memories via vector store and can save new memories
-3. **Tool Execution**: Currently supports `get_rate` (loan calculations) and `upsert_memory` (memory storage)
+2. **Memory Integration**: Agent retrieves semantic memories via vector store and can save new memories with automatic deduplication
+3. **Tool Execution**: Supports `get_rate` (loan calculations), `upsert_memory` (memory storage), `list_memories`, and `delete_memory`
 4. **Human-in-the-Loop**: Memory storage requires approval via `approve_memory_store` interrupt
 5. **Multimodal Support**: Native handling of images and documents via GPT-4's vision capabilities
 
@@ -42,7 +42,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `src/react_agent/custom_get_rate_tool.py` - Mortgage rate calculator with loan limits validation
   - Flexible input parsing: supports "20k", "20 thousand", "20 grand", "$20,000", "20000 down"
   - Handles natural language currency formats and real estate terminology
-- `src/react_agent/upsert_memory.py` - Memory storage functionality for user context
+- `src/react_agent/upsert_memory.py` - Memory storage with automatic deduplication
+  - Automatically detects and handles duplicate memories
+  - Smart merging for similar but not identical memories
+- `src/react_agent/list_memories.py` - List all stored memories for the current user
+- `src/react_agent/delete_memory.py` - Remove outdated or incorrect memories
 - Supports both Conventional and FHA loan types with different limits and requirements
 
 ### Multimodal File Handling
@@ -76,6 +80,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Uses semantic search over stored user interactions and loan scenarios
 - Embeddings function specified in langgraph.json due to custom requirements
 - Memories are user-scoped and include similarity scoring
+- **Automatic Deduplication**: New memories are automatically checked against existing ones
+  - Similarity > 0.85: Updates the existing memory
+  - Similarity 0.70-0.85: Merges with existing memory
+  - Similarity < 0.70: Creates a new memory
+- **Memory Management Tools**:
+  - `list_memories`: View all stored memories for the current user
+  - `delete_memory`: Remove outdated or incorrect memories
 
 ### Loan Calculation Logic
 - Conventional loans: max 95% LTV, limits up to $1.5M+ based on units
