@@ -5,22 +5,21 @@ Works with a chat model with tool calling support.
 import asyncio
 import logging
 from datetime import UTC, datetime
-from typing import Any, Dict, List, Literal, cast
+from typing import Dict, List, Literal, cast
 
-from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig
-from langgraph.constants import END, Send
+from langgraph.constants import END
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode
 from langgraph.store.base import BaseStore
 from langgraph.types import Command, interrupt
-
-from react_agent.state import InputState, State
-from react_agent.custom_get_rate_tool import get_rate
-from react_agent.upsert_memory import upsert_memory
 from react_agent.configuration import Configuration
+from react_agent.custom_get_rate_tool import get_rate
+from react_agent.state import InputState, State
+from react_agent.upsert_memory import upsert_memory
 from react_agent.utils import load_chat_model
-from react_agent.file_handler import format_multimodal_message
+from react_agent.tools.document_analysis import document_analysis, process_document_analysis
 
 
 # Define the function that calls the model
@@ -40,7 +39,7 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
     configuration = Configuration.from_context()
 
     # Initialize the model with tool binding. Change the model or add more tools here.
-    model = load_chat_model(configuration.model).bind_tools([get_rate, upsert_memory])
+    model = load_chat_model(configuration.model).bind_tools([get_rate, upsert_memory, document_analysis])
 
     """Extract the user's state from the conversation and update the memory."""
     configurable = Configuration.from_runnable_config(config)
@@ -63,7 +62,7 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
     <memories>
     {formatted}
     </memories>"""
-    
+
     system_message = configuration.system_prompt.format(
         system_time=datetime.now(tz=UTC).isoformat(),
         memories=formatted,
@@ -71,27 +70,9 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
 
     # Prepare messages with multimodal support
     messages_to_send = [{"role": "system", "content": system_message}]
-    
-    # Process messages and handle attachments
-    for i, msg in enumerate(state.messages):
-        # Check if this is the most recent user message with attachments
-        if (hasattr(msg, 'type') and msg.type == "human" and 
-            hasattr(msg, 'additional_kwargs') and 
-            msg.additional_kwargs.get('attachments') and 
-            i == len(state.messages) - 1):
-            # Format as multimodal message
-            multimodal_content = format_multimodal_message(
-                msg.content if hasattr(msg, 'content') else str(msg), 
-                msg.additional_kwargs['attachments']
-            )
-            messages_to_send.append({
-                "role": "user",
-                "content": multimodal_content
-            })
-        else:
-            # Regular message - append as is
-            messages_to_send.append(msg)
 
+    for i, msg in enumerate(state.messages):
+        messages_to_send.append(msg)
     # Get the model's response
     response = cast(
         AIMessage,
@@ -110,42 +91,6 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
         }
     # Return the model's response as a list to be added to existing messages
     return {"messages": [response]}
-
-
-async def recommend_product(state: State) -> Dict[str, List[AIMessage]]:
-    """Call the LLM powering our "agent".
-
-    This function prepares the prompt, initializes the model, and processes the response.
-
-    Args:
-        state (State): The current state of the conversation.
-        config (RunnableConfig): Configuration for the model run.
-
-    Returns:
-        dict: A dictionary containing the model's response message.
-    """
-    configuration = Configuration.from_context()
-
-    # Initialize the model with tool binding. Change the model or add more tools here.
-    model = load_chat_model(configuration.model)
-
-    # Format the system prompt. Customize this to change the agent's behavior.
-    system_message = configuration.recommend_prompt.format(
-        system_time=datetime.now(tz=UTC).isoformat()
-    )
-
-    # Get the model's response
-    response = cast(
-        AIMessage,
-        await model.ainvoke(
-            [{"role": "system", "content": system_message}, *state.messages]
-        ),
-    )
-
-    # Return the model's response as a list to be added to existing messages
-    return {"messages": [response]}
-
-
 
 
 async def store_memory(
@@ -188,6 +133,79 @@ async def store_memory(
     return {"messages": results}
 
 
+async def document_analysis_node(state: State, config: RunnableConfig):
+    # Extract tool calls from the last message
+    if not state.messages:
+        logging.error("document_analysis_node No messages found in the state.")
+        return {"messages": []}
+
+    last_message = state.messages[-1]
+    tool_calls = last_message.tool_calls
+    analysis_calls = [
+        tc
+        for tc in tool_calls
+        if tc["name"] == "document_analysis"
+    ]
+
+    # Process document analysis to get multimodal content
+    analysis_results = await asyncio.gather(
+        *(
+            process_document_analysis(state)
+            for _tc in analysis_calls
+        )
+    )
+
+    # Aggregate all messages including the multimodal content
+    aggregated_messages = []
+
+    # Add system message
+    configuration = Configuration.from_context()
+    system_message = configuration.system_prompt.format(
+        system_time=datetime.now(tz=UTC).isoformat(),
+        memories="",  # No memories for document analysis
+    )
+    aggregated_messages.append({"role": "system", "content": system_message})
+
+    # Combine all multimodal content into a single user message
+    all_content = []
+    for result in analysis_results:
+        if result.get("messages"):
+            for msg in result["messages"]:
+                if msg.get("content"):
+                    # Ensure content is always a list of objects for multimodal
+                    content = msg["content"]
+                    if isinstance(content, list):
+                        all_content.extend(content)
+                    else:
+                        # If it's a string, wrap it in a text object
+                        all_content.append({"type": "text", "text": str(content)})
+
+    if all_content:
+        aggregated_messages.append({
+            "role": "user",
+            "content": all_content
+        })
+
+    model = load_chat_model(configuration.model)
+    response = cast(
+        AIMessage,
+        await model.ainvoke(aggregated_messages),
+    )
+
+    # Format as tool call responses
+    results = [
+        {
+            "role": "tool",
+            "content": str(response.content),
+            "tool_call_id": tc["id"],
+            "name": tc["name"],
+        }
+        for tc in analysis_calls
+    ]
+
+    return {"messages": results}
+
+
 # Define a new graph
 
 builder = StateGraph(
@@ -200,6 +218,7 @@ builder = StateGraph(
 builder.add_node(call_model)
 builder.add_node("get_rate", ToolNode([get_rate]))
 builder.add_node("store_memory", store_memory)
+builder.add_node("document_analysis_node", document_analysis_node)
 
 # Set the entrypoint - directly call model since files are handled in messages
 builder.set_entry_point("call_model")
@@ -231,7 +250,7 @@ def approve_memory_store(state: State) -> Command[Literal["store_memory", "__end
 builder.add_node("approve_memory_store", approve_memory_store)
 
 
-def route_model_output(state: State) -> Literal["__end__", "get_rate", "approve_memory_store"]:
+def route_model_output(state: State) -> Literal["__end__", "get_rate", "approve_memory_store", "document_analysis_node"]:
     """Determine the next node based on the model's output.
 
     This function checks if the model's last message contains tool calls.
@@ -249,12 +268,14 @@ def route_model_output(state: State) -> Literal["__end__", "get_rate", "approve_
         )
     if not last_message.tool_calls:
         return END
-    
+
     tool_name = last_message.tool_calls[0]["name"]
     if tool_name == "get_rate":
         return "get_rate"
     elif tool_name == "upsert_memory":
         return "approve_memory_store"
+    elif tool_name == "document_analysis":
+        return "document_analysis_node"
     return END
 
 
@@ -266,10 +287,10 @@ builder.add_conditional_edges(
     route_model_output,
 )
 
-
 # This creates a cycle: after using tools, we always return to the model
 builder.add_edge("get_rate", END)
 builder.add_edge("store_memory", END)
+builder.add_edge("document_analysis_node", END)
 
 # Compile the builder into an executable graph
 graph = builder.compile(

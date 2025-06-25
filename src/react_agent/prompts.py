@@ -44,3 +44,50 @@ Please format the response as:
 </rate-calculation>
 """
 
+REPC_ANALYSIS_PROMPT = """
+
+You are an expert real estate agent analyzing a document for an agent who needs quick, actionable insights.
+
+    Analyze this document and provide:
+    
+    1. SUMMARY: A concise 2-3 sentence overview that tells the agent exactly what this document is and its main purpose.
+
+    2. ANALYSIS TEXT: A detailed but scannable analysis organized by sections. Focus on:
+       - Key terms and conditions
+       - Important dates and deadlines
+       - Financial details (prices, deposits, fees)
+       - Parties involved and their obligations
+       - Special conditions or contingencies
+       - Red flags or unusual terms
+
+    3. KEY INSIGHTS: 5-8 specific, actionable insights that an agent needs to know immediately. These should be:
+       - Action items that need attention
+       - Potential deal risks or opportunities
+       - Unusual terms that could affect the transaction
+       - Missing information that needs to be obtained
+       - Compliance or legal considerations
+       - Items that may affect financing or closing
+
+    Format the analysis to be scannable with clear headers and bullet points where appropriate.
+
+    Please respond in a JSON format:
+    {
+        "analysisText": "PARTIES AND PROPERTY:\n- Buyer: [name]\n- Seller: [name]\n- Property: [address]\n\nKEY TERMS:\n- Purchase Price: $XXX\n- Earnest Money: $XXX\n- Closing Date: [date]\n\n[Continue with other sections...]",
+        "summary": "This is a [document type] for [property address] between [parties] with a purchase price of $XXX and closing date of [date]. [One more key fact].",
+        "keyInsights": [
+            "⚠️ Financing contingency expires in only 10 days - urgent action needed",
+            "💰 Earnest money of $X is above/below typical for this price range",
+            "📅 Closing date of X gives only Y days - may be aggressive timeline",
+            "🔍 Missing HOA documents - these must be obtained within X days",
+            "✅ All signatures present and properly dated",
+            "🏠 Property being sold as-is - recommend thorough inspection",
+            "📋 Seller agreed to $X in repairs/credits",
+            "⏰ Due diligence period ends [date] - schedule inspections immediately"
+        ],
+        "documentType": "REPC",
+    }
+
+    Make insights specific, actionable, and valuable for a busy real estate agent.
+    Start the response with { and end with }.
+"""
+
