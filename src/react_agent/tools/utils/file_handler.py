@@ -7,6 +7,7 @@ from pathlib import Path
 import io
 import logging
 from react_agent.tools.utils.document_type_strategies import has_custom_handling, get_custom_messages
+from react_agent.prompts import DEFAULT_ANALYSIS_PROMPT
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -61,14 +62,44 @@ def process_large_document(pdf_data: str, filename: str, estimated_tokens: float
                              :DOCUMENT_SIZE_LIMIT] + "\n\n[Document truncated due to size limit]"
         if has_custom_handling(extracted_text[:DOCUMENT_HEADER_SIZE]):
             content_blocks.extend(get_custom_messages(extracted_text))
+        else:
+            content_blocks.append({
+                "type": "text",
+                "text": DEFAULT_ANALYSIS_PROMPT
+            })
         content_blocks.append({
             "type": "text",
             "text": f"=== PDF Content: {filename} (Text Extracted) ===\n\n{extracted_text}"
         })
     else:
         content_blocks.append({
+                "type": "text",
+                "text": DEFAULT_ANALYSIS_PROMPT
+            })
+        content_blocks.extend(process_images(pdf_data, filename))
+    return content_blocks
+
+
+def process_images(pdf_data: str, filename: str):
+    pdf_images = convert_pdf_to_images(pdf_data)
+    content_blocks = []
+    if pdf_images:
+        # Add each page as an image
+        for i, img_base64 in enumerate(pdf_images):
+            content_blocks.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:image/png;base64,{img_base64}"
+                }
+            })
+        content_blocks.append({
             "type": "text",
-            "text": f"[PDF {filename} is too large for processing (estimated {estimated_tokens:.0f} tokens). Please use a smaller file or extract key pages.]"
+            "text": f"[PDF {filename} - {len(pdf_images)} pages shown as images above]"
+        })
+    else:
+        content_blocks.append({
+            "type": "text",
+            "text": f"[PDF {filename} could not be processed - unable to extract text or convert to images]"
         })
     return content_blocks
 
@@ -81,33 +112,18 @@ def process_normal_document(pdf_data: str, filename: str):
     if extracted_text and len(extracted_text) > DOCUMENT_IMAGE_LIMIT:  # If we got meaningful text
         if has_custom_handling(extracted_text[:DOCUMENT_HEADER_SIZE]):
             content_blocks.extend(get_custom_messages(extracted_text))
+        else:
+            content_blocks.append({
+                "type": "text",
+                "text": DEFAULT_ANALYSIS_PROMPT
+            })
         content_blocks.append({
             "type": "text",
             "text": f"=== PDF Content: {filename} ===\n\n{extracted_text}"
         })
     else:
         # Try image conversion as fallback
-        # TODO: This operation is really heavy usually
-        pdf_images = convert_pdf_to_images(pdf_data)
-
-        if pdf_images:
-            # Add each page as an image
-            for i, img_base64 in enumerate(pdf_images):
-                content_blocks.append({
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/png;base64,{img_base64}"
-                    }
-                })
-            content_blocks.append({
-                "type": "text",
-                "text": f"[PDF {filename} - {len(pdf_images)} pages shown as images above]"
-            })
-        else:
-            content_blocks.append({
-                "type": "text",
-                "text": f"[PDF {filename} could not be processed - unable to extract text or convert to images]"
-            })
+        content_blocks.extend(process_images(pdf_data, filename))
 
     return content_blocks
 
@@ -125,6 +141,11 @@ def process_text_documents(attachment: Dict[str, Any], filename: str):
             text_content = f"[Unable to decode {filename}]"
     if has_custom_handling(text_content[:DOCUMENT_HEADER_SIZE]):
         content_blocks.extend(get_custom_messages(text_content))
+    else:
+        content_blocks.append({
+            "type": "text",
+            "text": DEFAULT_ANALYSIS_PROMPT
+        })
     content_blocks.append({
         "type": "text",
         "text": f"=== FILE: {filename} ===\n\n{text_content}"
@@ -159,10 +180,7 @@ def process_attachments_for_multimodal(attachments: List[Dict[str, Any]]) -> Lis
             logger.info(f"Processing PDF attachment: {filename}")
             pdf_data = attachment.get('data', '')
 
-            logger.info("content_type.startswith image application/pdf")
-
             if not pdf_data:
-                logger.info("content_type.startswith image not pdf data")
                 logger.error(f"No data found for PDF attachment: {filename}")
                 content_blocks.append({
                     "type": "text",
@@ -328,6 +346,8 @@ def extract_pdf_text(pdf_data: str) -> Optional[str]:
                 text_content.append(f"--- Page {page_num + 1} ---\n{text}")
 
         return "\n\n".join(text_content) if text_content else None
+
+
 
     except Exception as e:
         logger.error(f"Error extracting text from PDF: {e}")

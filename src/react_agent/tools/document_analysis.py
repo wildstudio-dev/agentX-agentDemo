@@ -1,4 +1,3 @@
-import logging
 from react_agent.tools.utils.file_handler import format_multimodal_message
 
 
