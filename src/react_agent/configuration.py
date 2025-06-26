@@ -9,7 +9,7 @@ from typing import Annotated, Optional, Any
 from langchain_core.runnables import ensure_config, RunnableConfig
 from langgraph.config import get_config
 
-from react_agent.prompts import SECOND_SYSTEM_PROMPT, RECOMMEND_PROMPT
+from react_agent.prompts import SECOND_SYSTEM_PROMPT, RECOMMEND_PROMPT, REPC_ANALYSIS_PROMPT
 
 
 @dataclass(kw_only=True)
