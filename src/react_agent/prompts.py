@@ -70,25 +70,28 @@ You are an expert real estate agent analyzing a document for an agent who needs 
 
     Format the analysis to be scannable with clear headers and bullet points where appropriate.
 
-    Please respond in a JSON format:
-    {
-        "analysisText": "PARTIES AND PROPERTY:\n- Buyer: [name]\n- Seller: [name]\n- Property: [address]\n\nKEY TERMS:\n- Purchase Price: $XXX\n- Earnest Money: $XXX\n- Closing Date: [date]\n\n[Continue with other sections...]",
-        "summary": "This is a [document type] for [property address] between [parties] with a purchase price of $XXX and closing date of [date]. [One more key fact].",
-        "keyInsights": [
-            "⚠️ Financing contingency expires in only 10 days - urgent action needed",
-            "💰 Earnest money of $X is above/below typical for this price range",
-            "📅 Closing date of X gives only Y days - may be aggressive timeline",
-            "🔍 Missing HOA documents - these must be obtained within X days",
-            "✅ All signatures present and properly dated",
-            "🏠 Property being sold as-is - recommend thorough inspection",
-            "📋 Seller agreed to $X in repairs/credits",
-            "⏰ Due diligence period ends [date] - schedule inspections immediately"
-        ],
-        "documentType": "REPC",
-    }
+    Please format the response as:
+    <analysis>
+        <analysis-text>
+        PARTIES AND PROPERTY:\n- Buyer: [name]\n- Seller: [name]\n- Property: [address]\n\nKEY TERMS:\n- Purchase Price: $XXX\n- Earnest Money: $XXX\n- Closing Date: [date]\n\n[Continue with other sections...]"
+        </analysis-text>
+        <summary>
+        This is a [document type] for [property address] between [parties] with a purchase price of $XXX and closing date of [date]. [One more key fact]."
+        </summary>
+        <key-insights>
+            ⚠️ Financing contingency expires in only 10 days - urgent action needed
+            💰 Earnest money of $X is above/below typical for this price range
+            📅 Closing date of X gives only Y days - may be aggressive timeline
+            🔍 Missing HOA documents - these must be obtained within X days
+            ✅ All signatures present and properly dated
+            🏠 Property being sold as-is - recommend thorough inspection
+            📋 Seller agreed to $X in repairs/credits
+            ⏰ Due diligence period ends [date] - schedule inspections immediately
+        </key-insights>
+        <document-type>REPC</document-type>
+    </analysis>
 
     Make insights specific, actionable, and valuable for a busy real estate agent.
-    Start the response with { and end with }.
 """
 
 DEFAULT_ANALYSIS_PROMPT = """
