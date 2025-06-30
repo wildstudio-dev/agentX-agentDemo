@@ -72,12 +72,13 @@ You are an expert real estate agent analyzing a document for an agent who needs 
 
     Please format the response as:
     <analysis>
-        <analysis-text>
-        PARTIES AND PROPERTY:\n- Buyer: [name]\n- Seller: [name]\n- Property: [address]\n\nKEY TERMS:\n- Purchase Price: $XXX\n- Earnest Money: $XXX\n- Closing Date: [date]\n\n[Continue with other sections...]"
-        </analysis-text>
+        <document-type>REPC</document-type>
         <summary>
         This is a [document type] for [property address] between [parties] with a purchase price of $XXX and closing date of [date]. [One more key fact]."
         </summary>
+        <analysis-text>
+        PARTIES AND PROPERTY:\n- Buyer: [name]\n- Seller: [name]\n- Property: [address]\n\nKEY TERMS:\n- Purchase Price: $XXX\n- Earnest Money: $XXX\n- Closing Date: [date]\n\n[Continue with other sections...]"
+        </analysis-text>
         <key-insights>
             ⚠️ Financing contingency expires in only 10 days - urgent action needed
             💰 Earnest money of $X is above/below typical for this price range
@@ -88,7 +89,6 @@ You are an expert real estate agent analyzing a document for an agent who needs 
             📋 Seller agreed to $X in repairs/credits
             ⏰ Due diligence period ends [date] - schedule inspections immediately
         </key-insights>
-        <document-type>REPC</document-type>
     </analysis>
 
     If you need to highlight anything please use <b>bold</b> html tags.
