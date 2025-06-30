@@ -10,8 +10,5 @@
           "embed": "./src/react_agent/embed.py:aembed_texts",
           "fields": ["$"]
       }
-  },
-   "auth": {
-    "path": "./src/react_agent/security/auth.py:auth"
   }
 }
