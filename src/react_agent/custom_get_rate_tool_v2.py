@@ -1,6 +1,7 @@
 # Key Changes Implemented:
 # Payment-First Output - Monthly payment prominently displayed at the top
-# Regulatory Disclaimer - Comprehensive disclaimer protecting real estate agents✅ Dynamic Rate Fetching - Integrates Freddie Mac PMMS + 0.5% margin
+# Regulatory Disclaimer - Comprehensive disclaimer protecting real estate agents
+# Dynamic Rate Fetching - Integrates Freddie Mac PMMS + 0.5% margin
 # Enhanced Assumptions - Shows Purchase Price, Down Payment, Loan Amount, and LTV
 # FHA Corrections - Proper upfront MIP (1.75%) and monthly MIP (0.55%) calculations
 # VA Loan Support - Full funding fee table with first-time/subsequent usage
@@ -18,8 +19,9 @@
 import re
 import requests
 from enum import Enum
-from typing import Union, Optional, Dict, Any
+from typing import Union, Optional
 from xml.etree import ElementTree as ET
+import logging
 
 # Loan limits for different loan types
 CONVENTIONAL_LOAN_LIMITS = [806500, 1032650, 1248150, 1551250]
@@ -125,10 +127,11 @@ def fetch_freddie_mac_rate(loan_type: str = "conventional") -> float:
         if latest_rate is not None:
             base_rate = float(latest_rate.text)
             return base_rate + 0.5  # Add 0.5% margin
+        logging.info(f"Freddie Mac rate not found for {loan_type}, using fallback.")
             
     except Exception as e:
         # Fallback to reasonable rate if API fails
-        print(f"Failed to fetch Freddie Mac rate: {e}")
+        logging.error(f"Failed to fetch Freddie Mac rate: {e}")
     
     # Fallback rates by loan type
     fallback_rates = {
