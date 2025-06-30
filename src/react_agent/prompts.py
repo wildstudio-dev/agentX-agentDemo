@@ -91,6 +91,7 @@ You are an expert real estate agent analyzing a document for an agent who needs 
         <document-type>REPC</document-type>
     </analysis>
 
+    If you need to highlight anything please use <b>bold</b> html tags.
     Make insights specific, actionable, and valuable for a busy real estate agent.
 """
 
@@ -133,32 +134,45 @@ Always prioritize information that would help a real estate professional make qu
 
 Format the analysis to be scannable with clear headers and bullet points where appropriate.
 
-Please respond in a JSON format given in the example:
-{
-    "documentType": "REPC or other document type like "Listing Agreement", "Loan Estimate", etc.;
-    "key_metrics": [
-        "Key Property Details",
-        "Financial Information",
-        "Important Dates",
-        "Critical Terms & Conditions",
-        "Action Items for Agent"
-    ];
-    "property_details": "Property Details",
-    "financial_info": [
-        "Purchase Price",
-        "Down Payment",
-        "Loan Amount",
-        "Interest Rate",
-        "Loan Type",
-        "Monthly Payment"
-    ];
-    "important_dates": ["Listing Date", "Offer Date", "Closing Date", "Rate Lock Expiration"];
-    "summary": "This is a [document type] for [property address] between [parties] with a purchase price of $XXX and closing date of [date]. [One more key fact].",
-    "relevant_parties": [ "Party 1", "Party 2" ];
-    "risk_factors": [ "Risk factor 1", "Risk factor 2" ];
-}
+  Please format the response as:
+  <analysis>
+    <document-type>REPC or other document type like "Listing Agreement", "Loan Estimate", etc.;</document-type>
+    <summary>This is a [document type] for [property address] between [parties] with a purchase price of $XXX and closing date of [date]. [One more key fact]."</summary>
+    <key-metrics>
+            ⚠️ Financing contingency expires in only 10 days - urgent action needed
+            💰 Earnest money of $X is above/below typical for this price range
+            📅 Closing date of X gives only Y days - may be aggressive timeline
+            🔍 Missing HOA documents - these must be obtained within X days
+            ✅ All signatures present and properly dated
+            🏠 Property being sold as-is - recommend thorough inspection
+            📋 Seller agreed to $X in repairs/credits
+            ⏰ Due diligence period ends [date] - schedule inspections immediately
+    </key-metrics>
+    <property-details>Property Details</property-details>
+    <financial-info>
+        Purchase Price
+        Down Payment
+        Loan Amount
+        Interest Rate
+        Loan Type
+        Monthly Payment
+    </financial-info>
+    <important-dates>
+        Listing Date
+        Offer Date
+        Closing Date
+        Rate Lock Expiration
+    </important-dates>
+    <relevant-parties>
+        Party 1
+        Party 2
+    </relevant-parties>
+    <risk-factors>
+        Risk factor 1
+        Risk factor 2
+    </risk-factors>
+  </analysis>
 
-Make insights specific, actionable, and valuable for a busy real estate agent.
-Start the response with { and end with }.
+  If you need to highlight anything please use <b>bold</b> html tags.
+  Make insights specific, actionable, and valuable for a busy real estate agent.
 """
-
