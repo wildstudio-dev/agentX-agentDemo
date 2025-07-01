@@ -26,27 +26,24 @@ import logging
 # Loan limits for different loan types
 CONVENTIONAL_LOAN_LIMITS = [806500, 1032650, 1248150, 1551250]
 FHA_LOAN_LIMITS = [629050, 805300, 973400, 1209750]
-JUMBO_THRESHOLD = 806500  # Above this is jumbo territory
 
 LOAN_LIMITS = {
     "conventional": CONVENTIONAL_LOAN_LIMITS,
     "fha": FHA_LOAN_LIMITS,
     "jumbo": [float('inf')] * 4,  # No upper limit for jumbo
-    "va": [float('inf')] * 4,     # VA loans have no conforming limits
-    "usda": CONVENTIONAL_LOAN_LIMITS  # Same as conventional
+    "va": [float('inf')] * 4,  # VA loans have no conforming limits
 }
 
-# VA Funding Fee Table (percentage of loan amount)
 VA_FUNDING_FEES = {
     "first_time": {
-        "no_down": 0.023,      # 2.3%
-        "5_percent_down": 0.0165,  # 1.65%
-        "10_percent_down": 0.0138  # 1.38%
+        "no_down": 0.0215,
+        "5_percent_down": 0.015,
+        "10_percent_down": 0.0125
     },
     "subsequent": {
-        "no_down": 0.036,      # 3.6%
-        "5_percent_down": 0.0165,  # 1.65%
-        "10_percent_down": 0.0138  # 1.38%
+        "no_down": 0.033,
+        "5_percent_down": 0.0150,
+        "10_percent_down": 0.0125
     }
 }
 
@@ -62,22 +59,22 @@ def parse_currency_amount(value: Union[str, int, float]) -> float:
     """
     if isinstance(value, (int, float)):
         return float(value)
-    
+
     if not isinstance(value, str):
         raise ValueError(f"Cannot parse currency amount from {type(value)}")
-    
+
     # Clean up the string
     value = value.strip().lower()
-    
+
     # Handle percentage inputs
     if '%' in value:
         num = re.findall(r'[\d.]+', value)[0] if re.findall(r'[\d.]+', value) else '0'
         return float(num) / 100.0
-    
+
     # Remove common currency symbols and words
     value = re.sub(r'[$,]', '', value)
     value = re.sub(r'\b(dollars?|bucks?|down|payment)\b', '', value)
-    
+
     # Handle shorthand notations
     multiplier = 1
     if re.search(r'\b(k|thousand|grand)\b', value):
@@ -86,21 +83,21 @@ def parse_currency_amount(value: Union[str, int, float]) -> float:
     elif re.search(r'\b(m|million|mil)\b', value):
         multiplier = 1000000
         value = re.sub(r'\b(m|million|mil)\b', '', value)
-    
+
     # Handle case where suffixes are directly attached to numbers (e.g., "20k", "1.5m")
     k_match = re.search(r'(\d+(?:\.\d+)?)k\b', value)
     if k_match:
         return float(k_match.group(1)) * 1000
-    
+
     m_match = re.search(r'(\d+(?:\.\d+)?)m\b', value)
     if m_match:
         return float(m_match.group(1)) * 1000000
-    
+
     # Extract the numeric part
     numbers = re.findall(r'[\d.]+', value.strip())
     if not numbers:
         raise ValueError(f"No numeric value found in: {value}")
-    
+
     return float(numbers[0]) * multiplier
 
 
@@ -118,30 +115,29 @@ def fetch_freddie_mac_rate(loan_type: str = "conventional") -> float:
         url = "https://www.freddiemac.com/pmms/pmms_archives.xml"
         response = requests.get(url, timeout=10)
         response.raise_for_status()
-        
+
         # Parse XML
         root = ET.fromstring(response.content)
-        
+
         # Get the most recent rate (first item)
         latest_rate = root.find('.//rate')
         if latest_rate is not None:
             base_rate = float(latest_rate.text)
             return base_rate + 0.5  # Add 0.5% margin
         logging.info(f"Freddie Mac rate not found for {loan_type}, using fallback.")
-            
+
     except Exception as e:
         # Fallback to reasonable rate if API fails
         logging.error(f"Failed to fetch Freddie Mac rate: {e}")
-    
+
     # Fallback rates by loan type
     fallback_rates = {
         "conventional": 7.5,
         "fha": 7.25,
         "va": 7.0,
-        "jumbo": 7.75,
-        "usda": 7.25
+        "jumbo": 7.75
     }
-    
+
     return fallback_rates.get(loan_type, 7.5)
 
 
@@ -150,11 +146,10 @@ class LoanType(Enum):
     FHA = "fha"
     VA = "va"
     JUMBO = "jumbo"
-    USDA = "usda"
 
 
-def calculate_va_funding_fee(loan_amount: float, down_payment: float, 
-                           is_first_time: bool = True, is_exempt: bool = False) -> float:
+def calculate_va_funding_fee(loan_amount: float, down_payment: float,
+                             is_first_time: bool = True, is_exempt: bool = False) -> float:
     """Calculate VA funding fee based on down payment and usage.
     
     Args:
@@ -168,19 +163,19 @@ def calculate_va_funding_fee(loan_amount: float, down_payment: float,
     """
     if is_exempt:
         return 0.0
-    
+
     home_price = loan_amount + down_payment
     down_payment_percent = down_payment / home_price if home_price > 0 else 0
-    
+
     fee_type = "first_time" if is_first_time else "subsequent"
-    
+
     if down_payment_percent >= 0.10:
         fee_rate = VA_FUNDING_FEES[fee_type]["10_percent_down"]
     elif down_payment_percent >= 0.05:
         fee_rate = VA_FUNDING_FEES[fee_type]["5_percent_down"]
     else:
         fee_rate = VA_FUNDING_FEES[fee_type]["no_down"]
-    
+
     return loan_amount * fee_rate
 
 
@@ -195,10 +190,9 @@ def validate_normalize_loan_type(loan_type):
             loan_type = LoanType.VA
         elif loan_type_lower in ['jumbo']:
             loan_type = LoanType.JUMBO
-        elif loan_type_lower in ['usda', 'rural']:
-            loan_type = LoanType.USDA
         else:
             loan_type = LoanType(loan_type)
+
     else:
         loan_type = LoanType(loan_type)
     return loan_type
@@ -223,7 +217,7 @@ def get_rate(
     
     Args:
         home_price: The purchase price of the home. Accepts various formats like "$500,000", "500k", "500 thousand".
-        loan_type: The type of loan: 'conventional', 'fha', 'va', 'jumbo', or 'usda'. Defaults to 'conventional'.
+        loan_type: The type of loan: 'conventional', 'fha', 'va', 'jumbo'. Defaults to 'conventional'.
         units: The number of units in the property. Defaults to 1.
         down_payment: The down payment amount. Accepts formats like "20,000", "20k", "20 grand".
         annual_interest_rate: The annual interest rate as a percentage. If not provided, fetches current Freddie Mac rate + 0.5%.
@@ -276,7 +270,7 @@ def get_rate(
             loan_type = validate_normalize_loan_type(loan_type)
         except ValueError:
             return {
-                "error": "Invalid loan type. Must be 'conventional', 'fha', 'va', 'jumbo', or 'usda'."
+                "error": "Invalid loan type. Must be 'conventional', 'fha', 'va', 'jumbo'"
             }
 
     # Determine home price if not provided
@@ -298,8 +292,6 @@ def get_rate(
             down_payment = home_price * 0.035  # 3.5% for FHA
         elif loan_type == LoanType.VA:
             down_payment = 0  # VA allows 0% down
-        elif loan_type == LoanType.USDA:
-            down_payment = 0  # USDA allows 0% down
         else:
             down_payment = home_price * 0.20  # 20% for conventional/jumbo
 
@@ -398,7 +390,6 @@ def get_rate(
         LoanType.FHA: "FHA",
         LoanType.VA: "VA",
         LoanType.JUMBO: "Jumbo",
-        LoanType.USDA: "USDA"
     }[loan_type]
 
     result = f"""
@@ -414,32 +405,34 @@ def get_rate(
         mi_type = "PMI" if loan_type == LoanType.CONVENTIONAL else "MIP"
         result += f"\n        {mi_type}: ${round(monthly_mi, 2):,}"
 
+    va_text = ""
+    if loan_type == LoanType.VA:
+        va_text += f"VA Funding Fee: ${round(va_funding_fee, 2):,} ({'First-time' if va_first_time else 'Subsequent'} use)"
+        if va_exempt:
+            va_text += " - EXEMPT"
+
     result += f"""
     </breakdown>
     
     <loan-details>
         Purchase Price: ${round(home_price, 2):,}
-        Down Payment: ${round(down_payment, 2):,} ({(down_payment/home_price)*100:.1f}%)
+        Down Payment: ${round(down_payment, 2):,} ({(down_payment / home_price) * 100:.1f}%)
         Loan Amount: ${round(loan_amount, 2):,}
         Loan-to-Value (LTV): {calculated_ltv:.1%}
         Interest Rate: {round(annual_interest_rate, 3)}%
+        {va_text if loan_type == LoanType.VA else ""}
     </loan-details>
     
     <assumptions>
         • Loan Type: {loan_type_display}
         • Credit Score (FICO): {fico_score}
         • Loan Term: {loan_term_years} years
-        • Occupancy: Primary Residence
+        • Occupancy: Primary
         • Property Type: Single Family
         • Units: {units}"""
 
     if loan_type == LoanType.FHA and fha_upfront_mip > 0:
         result += f"\n        • FHA Upfront MIP: ${round(fha_upfront_mip, 2):,} (financed)"
-
-    if loan_type == LoanType.VA:
-        result += f"\n        • VA Funding Fee: ${round(va_funding_fee, 2):,} ({'First-time' if va_first_time else 'Subsequent'} use)"
-        if va_exempt:
-            result += " - EXEMPT"
 
     result += """
     </assumptions>
