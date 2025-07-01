@@ -20,7 +20,9 @@ from react_agent.state import InputState, State
 from react_agent.upsert_memory import upsert_memory
 from react_agent.utils import load_chat_model
 from react_agent.tools.document_analysis import document_analysis, process_document_analysis
+from dotenv import load_dotenv
 
+load_dotenv()
 
 # Define the function that calls the model
 
