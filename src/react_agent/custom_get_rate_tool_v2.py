@@ -8,7 +8,7 @@
 # Jumbo Loan Support - Automatic detection when loan exceeds conforming limits
 # Improved Tax/Insurance Display - Shows annual amounts and tax rates
 # Updated Defaults - Primary residence, single family, 760 FICO, proper occupancy
-
+import os
 # New Features:
 # Smart Loan Type Detection - Auto-switches to jumbo when appropriate
 # LTV Input Support - Can specify loan-to-value ratio directly
@@ -20,7 +20,7 @@ import re
 import requests
 from enum import Enum
 from typing import Union, Optional
-from xml.etree import ElementTree as ET
+from bs4 import BeautifulSoup
 import logging
 
 # Loan limits for different loan types
@@ -101,7 +101,46 @@ def parse_currency_amount(value: Union[str, int, float]) -> float:
     return float(numbers[0]) * multiplier
 
 
-def fetch_freddie_mac_rate(loan_type: str = "conventional") -> float:
+def parse_freddie_mac_rates():
+    url = os.getenv("FREDDIE_MAC_PMMS_URL", "https://www.freddiemac.com/pmms/pmms_archives")
+    response = requests.get(url, timeout=10)
+
+    soup = BeautifulSoup(response.text, 'html.parser')
+    tds = soup.find_all("td", class_="large-text-center")
+    years_to_rate = {
+        "30": 7.0,
+        "15": 7.0
+    }
+    found_rate = {
+        "30": False,
+        "15": False
+    }
+    for td in tds:
+        text = td.text.strip()
+        if "30‑Yr" in td.text.strip() and not found_rate["30"]:
+            parts = text.split(" ")
+            logging.info(f"Found 30-Year rate: {text}")
+            for part in parts:
+                if part.endswith("%"):
+                    latest_rate = part.strip('%')
+                    logging.info(f"Latest 30-Year rate: {latest_rate}")
+                    found_rate["30"] = True
+                    years_to_rate["30"] = float(latest_rate)
+        if "15‑Yr" in td.text.strip() and not found_rate["15"]:
+            parts = text.split(" ")
+            logging.info(f"Found 15-Year rate: {text}")
+            for part in parts:
+                if part.endswith("%"):
+                    logging.info(f"Found percentage part: {part}")
+                    latest_rate = part.strip('%')
+                    found_rate["15"] = True
+                    years_to_rate["15"] = float(latest_rate)
+        if found_rate["30"] and found_rate["15"]:
+            logging.info("Both 30-Year and 15-Year rates found, breaking loop.")
+            break
+    return years_to_rate
+
+def fetch_freddie_mac_rate(loan_type: str, loan_term_years: int) -> float:
     """Fetch current Freddie Mac PMMS rate and add 0.5% margin.
     
     Args:
@@ -111,20 +150,13 @@ def fetch_freddie_mac_rate(loan_type: str = "conventional") -> float:
         Current rate + 0.5% margin, or fallback rate if fetch fails
     """
     try:
-        # Freddie Mac PMMS XML feed
-        url = "https://www.freddiemac.com/pmms/pmms_archives.xml"
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-
-        # Parse XML
-        root = ET.fromstring(response.content)
-
-        # Get the most recent rate (first item)
-        latest_rate = root.find('.//rate')
+        years_to_rate = parse_freddie_mac_rates()
+        latest_rate = years_to_rate.get(str(loan_term_years), None)
         if latest_rate is not None:
-            base_rate = float(latest_rate.text)
+            base_rate = float(latest_rate)
+            logging.info(f"Freddie Mac rate for {loan_term_years}-Yr: {base_rate}%")
             return base_rate + 0.5  # Add 0.5% margin
-        logging.info(f"Freddie Mac rate not found for {loan_type}, using fallback.")
+        logging.info(f"Freddie Mac rate not found for {loan_term_years}-Yr, using fallback.")
 
     except Exception as e:
         # Fallback to reasonable rate if API fails
@@ -133,9 +165,9 @@ def fetch_freddie_mac_rate(loan_type: str = "conventional") -> float:
     # Fallback rates by loan type
     fallback_rates = {
         "conventional": 7.5,
-        "fha": 7.25,
-        "va": 7.0,
-        "jumbo": 7.75
+        "fha": 7.5,
+        "va": 7.5,
+        "jumbo": 7.5
     }
 
     return fallback_rates.get(loan_type, 7.5)
@@ -328,7 +360,7 @@ def get_rate(
 
     # Get interest rate
     if annual_interest_rate is None:
-        annual_interest_rate = fetch_freddie_mac_rate(loan_type.value)
+        annual_interest_rate = fetch_freddie_mac_rate(loan_type.value, loan_term_years)
 
     # Handle FHA upfront MIP
     fha_upfront_mip = 0
