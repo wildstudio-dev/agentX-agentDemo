@@ -19,7 +19,8 @@ dependencies = [
     "PyPDF2>=3.0.0",
     "Pillow>=10.0.0",
     "pypdfium2>=4.0.0",
-    "beautifulsoup4>=4.12.2"
+    "beautifulsoup4>=4.12.2",
+    "python-dotenv>=1.0.1",
 ]
 
 
