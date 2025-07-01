@@ -184,6 +184,26 @@ def calculate_va_funding_fee(loan_amount: float, down_payment: float,
     return loan_amount * fee_rate
 
 
+def validate_normalize_loan_type(loan_type):
+    if isinstance(loan_type, str):
+        loan_type_lower = loan_type.lower().strip()
+        if loan_type_lower in ['conventional', 'conv', 'conforming']:
+            loan_type = LoanType.CONVENTIONAL
+        elif loan_type_lower in ['fha']:
+            loan_type = LoanType.FHA
+        elif loan_type_lower in ['va', 'veteran', 'veterans']:
+            loan_type = LoanType.VA
+        elif loan_type_lower in ['jumbo']:
+            loan_type = LoanType.JUMBO
+        elif loan_type_lower in ['usda', 'rural']:
+            loan_type = LoanType.USDA
+        else:
+            loan_type = LoanType(loan_type)
+    else:
+        loan_type = LoanType(loan_type)
+    return loan_type
+
+
 def get_rate(
         home_price: Optional[Union[str, int, float]] = None,
         loan_type: Union[LoanType, str] = LoanType.CONVENTIONAL,
@@ -223,8 +243,17 @@ def get_rate(
             home_price = parse_currency_amount(home_price)
         if loan_amount is not None:
             loan_amount = parse_currency_amount(loan_amount)
+
+        # Handle down payment - could be percentage or dollar amount
+        down_payment_is_percentage = False
         if down_payment is not None:
+            if isinstance(down_payment, str) and '%' in down_payment:
+                down_payment_is_percentage = True
             down_payment = parse_currency_amount(down_payment)
+            # If it's a percentage and home_price is known, convert to dollar amount
+            if down_payment_is_percentage and home_price is not None:
+                down_payment = home_price * down_payment
+
         if annual_property_tax is not None:
             annual_property_tax = parse_currency_amount(annual_property_tax)
         if annual_home_insurance is not None:
@@ -233,7 +262,7 @@ def get_rate(
             ltv = parse_currency_amount(ltv) if isinstance(ltv, str) else float(ltv)
     except ValueError as e:
         return {
-            "error": f"Invalid input format: {str(e)}. Please provide numbers in formats like '500000', '$500,000', '500k', or '500 thousand'."
+            "error": f"Invalid input format: {str(e)}. Please provide numbers in formats like '500000', '$500,000', '500k', '20%', or '500 thousand'."
         }
 
     if home_price is None and loan_amount is None:
@@ -244,22 +273,7 @@ def get_rate(
     # Validate and normalize loan type
     if not isinstance(loan_type, LoanType):
         try:
-            if isinstance(loan_type, str):
-                loan_type_lower = loan_type.lower().strip()
-                if loan_type_lower in ['conventional', 'conv', 'conforming']:
-                    loan_type = LoanType.CONVENTIONAL
-                elif loan_type_lower in ['fha']:
-                    loan_type = LoanType.FHA
-                elif loan_type_lower in ['va', 'veteran', 'veterans']:
-                    loan_type = LoanType.VA
-                elif loan_type_lower in ['jumbo']:
-                    loan_type = LoanType.JUMBO
-                elif loan_type_lower in ['usda', 'rural']:
-                    loan_type = LoanType.USDA
-                else:
-                    loan_type = LoanType(loan_type)
-            else:
-                loan_type = LoanType(loan_type)
+            loan_type = validate_normalize_loan_type(loan_type)
         except ValueError:
             return {
                 "error": "Invalid loan type. Must be 'conventional', 'fha', 'va', 'jumbo', or 'usda'."
@@ -294,7 +308,7 @@ def get_rate(
         loan_amount = home_price - down_payment
 
     # Determine if loan should be jumbo
-    if loan_type == LoanType.CONVENTIONAL and loan_amount > JUMBO_THRESHOLD:
+    if loan_type == LoanType.CONVENTIONAL and loan_amount > LOAN_LIMITS["conventional"][units - 1]:
         loan_type = LoanType.JUMBO
 
     # Validate loan limits
@@ -309,9 +323,12 @@ def get_rate(
 
     # Validate LTV limits
     if loan_type == LoanType.CONVENTIONAL and calculated_ltv > 0.95:
-        return {
-            "error": f"LTV of {calculated_ltv:.1%} exceeds conventional loan limit of 95%. Consider FHA loan."
-        }
+        if calculated_ltv > 0.965:
+            return {
+                "error": f"LTV of {calculated_ltv:.1%} exceeds conventional loan limit of 95%. Consider FHA loan."
+            }
+        else:
+            loan_type = LoanType.FHA
     elif loan_type == LoanType.FHA and calculated_ltv > 0.965:
         return {
             "error": f"LTV of {calculated_ltv:.1%} exceeds FHA loan limit of 96.5%."
@@ -384,10 +401,9 @@ def get_rate(
         LoanType.USDA: "USDA"
     }[loan_type]
 
-    # Build result with payment-first emphasis
     result = f"""
-<payment-calculation>
-    <monthly-payment>${round(total_monthly_payment, 2):,}</monthly-payment>
+<rate-calculation>
+    <payment>${round(total_monthly_payment, 2):,}</payment>
     
     <breakdown>
         Principal & Interest: ${round(monthly_principal_interest, 2):,}
@@ -431,7 +447,7 @@ def get_rate(
     <disclaimer>
         This rate and payment estimate is generated using AI and is intended for illustrative purposes only. It does not constitute a loan offer, pre-qualification, or commitment to lend. The estimated rate is based on the Freddie Mac Primary Mortgage Market Survey® (PMMS®) average for the applicable loan type during the week of the request, plus an assumed margin of 0.50%. Actual rates and terms may vary based on a variety of factors, including credit profile, property type, loan amount, down payment, and market conditions. All borrowers must complete a full loan application and receive official loan disclosures before relying on any figures for decision-making. Please contact a licensed loan officer for a personalized quote and full details.
     </disclaimer>
-</payment-calculation>
+</rate-calculation>
 """
 
     return result
