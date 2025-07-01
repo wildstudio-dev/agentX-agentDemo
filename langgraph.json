@@ -11,7 +11,7 @@
           "fields": ["$"]
       }
   },
-   "auth": {
+  "auth": {
     "path": "./src/react_agent/security/auth.py:auth"
   }
 }
