@@ -176,3 +176,80 @@ Format the analysis to be scannable with clear headers and bullet points where a
   If you need to highlight anything please use <b>bold</b> html tags.
   Make insights specific, actionable, and valuable for a busy real estate agent.
 """
+
+REPC_SUMMARY_PROMPT = """
+    You are an expert real estate agent summarizing a document:
+    Summary should be a concise 2-3 sentence overview that tells a real estate agent exactly what this document is and its main purpose.
+    Please format the response as:
+    <analysis>
+        <document-type>REPC</document-type>
+        <summary>
+        This is a [document type] for [property address] between [parties] with a purchase price of $XXX and closing date of [date]. [One more key fact]."
+        </summary>
+    </analysis>
+    If you need to highlight anything please use <b>bold</b> html tags.
+"""
+
+DOCUMENT_ANALYSIS_PROMPTS = {
+    "key-insights": """
+        Please provide 5-8 specific, actionable insights that an agent needs to know immediately. These should be:
+        - Action items that need attention
+        - Potential deal risks or opportunities
+        - Unusual terms that could affect the transaction
+        - Missing information that needs to be obtained
+        - Compliance or legal considerations
+        - Items that may affect financing or closing
+
+        Examples:
+        ⚠️ Financing contingency expires in only 10 days - urgent action needed
+        💰 Earnest money of $X is above/below typical for this price range
+        📅 Closing date of X gives only Y days - may be aggressive timeline
+        🔍 Missing HOA documents - these must be obtained within X days
+        ✅ All signatures present and properly dated
+        🏠 Property being sold as-is - recommend thorough inspection
+        📋 Seller agreed to $X in repairs/credits
+        ⏰ Due diligence period ends [date] - schedule inspections immediately
+
+        For the following document content {text}
+
+        Please format the response as:
+        <analysis>
+        <document-type>{document_type}</document-type>
+        <key-insights>
+              ⚠️ Financing contingency expires in only 10 days - urgent action needed
+              💰 Earnest money of $X is above/below typical for this price range
+              📅 Closing date of X gives only Y days - may be aggressive timeline
+              🔍 Missing HOA documents - these must be obtained within X days
+              ✅ All signatures present and properly dated
+              🏠 Property being sold as-is - recommend thorough inspection
+              📋 Seller agreed to $X in repairs/credits
+              ⏰ Due diligence period ends [date] - schedule inspections immediately
+        </key-insights>
+        </analysis>
+        If you need to highlight anything please use <b>bold</b> html tags.
+        Make insights specific, actionable, and valuable for a busy real estate agent.
+    """,
+    "deep-analysis": """
+    Analyze this document content and provide
+    a detailed but scannable analysis text organized by sections. Focus on:
+       - Key terms and conditions
+       - Important dates and deadlines
+       - Financial details (prices, deposits, fees)
+       - Parties involved and their obligations
+       - Special conditions or contingencies
+       - Red flags or unusual terms
+
+     For the following document content {text}
+
+        Please format the response as:
+    <analysis>
+        <document-type>{document_type}</document-type>
+        <analysis-text>
+        PARTIES AND PROPERTY:\n- Buyer: [name]\n- Seller: [name]\n- Property: [address]\n\nKEY TERMS:\n- Purchase Price: $XXX\n- Earnest Money: $XXX\n- Closing Date: [date]\n\n[Continue with other sections...]"
+        </analysis-text>
+    </analysis>
+
+    If you need to highlight anything please use <b>bold</b> html tags.
+    Make insights specific, actionable, and valuable for a busy real estate agent.
+    """
+}

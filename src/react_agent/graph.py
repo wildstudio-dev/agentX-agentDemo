@@ -20,9 +20,11 @@ from react_agent.state import InputState, State
 from react_agent.upsert_memory import upsert_memory
 from react_agent.utils import load_chat_model
 from react_agent.tools.document_analysis import document_analysis, process_document_analysis
+from react_agent.prompts import DOCUMENT_ANALYSIS_PROMPTS
 from dotenv import load_dotenv
 
 load_dotenv()
+
 
 # Define the function that calls the model
 
@@ -73,7 +75,19 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
     # Prepare messages with multimodal support
     messages_to_send = [{"role": "system", "content": system_message}]
 
-    for i, msg in enumerate(state.messages):
+    for i, msg in enumerate(state.messages[-6:]):
+        if msg.additional_kwargs and "prompt_key" in msg.additional_kwargs \
+                and "text" in msg.additional_kwargs and "document_type" in msg.additional_kwargs:
+            prompt = DOCUMENT_ANALYSIS_PROMPTS.get(msg.additional_kwargs["prompt_key"], "")
+            if prompt:
+                messages_to_send.append({
+                    "role": "user",
+                    "content": prompt.format(
+                        text=msg.additional_kwargs["text"],
+                        document_type=msg.additional_kwargs["document_type"]
+                    )
+                })
+
         messages_to_send.append(msg)
     # Get the model's response
     response = cast(
@@ -201,6 +215,9 @@ async def document_analysis_node(state: State, config: RunnableConfig):
             "content": str(response.content),
             "tool_call_id": tc["id"],
             "name": tc["name"],
+            "additional_kwargs": {
+                "text": all_content,
+            }
         }
         for tc in analysis_calls
     ]
@@ -252,7 +269,8 @@ def approve_memory_store(state: State) -> Command[Literal["store_memory", "__end
 builder.add_node("approve_memory_store", approve_memory_store)
 
 
-def route_model_output(state: State) -> Literal["__end__", "get_rate", "approve_memory_store", "document_analysis_node"]:
+def route_model_output(state: State) -> Literal[
+    "__end__", "get_rate", "approve_memory_store", "document_analysis_node"]:
     """Determine the next node based on the model's output.
 
     This function checks if the model's last message contains tool calls.
