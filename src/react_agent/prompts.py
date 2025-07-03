@@ -44,138 +44,6 @@ Please format the response as:
 </rate-calculation>
 """
 
-REPC_ANALYSIS_PROMPT = """
-
-You are an expert real estate agent analyzing a document for an agent who needs quick, actionable insights.
-
-    Analyze this document and provide:
-    
-    1. SUMMARY: A concise 2-3 sentence overview that tells the agent exactly what this document is and its main purpose.
-
-    2. ANALYSIS TEXT: A detailed but scannable analysis organized by sections. Focus on:
-       - Key terms and conditions
-       - Important dates and deadlines
-       - Financial details (prices, deposits, fees)
-       - Parties involved and their obligations
-       - Special conditions or contingencies
-       - Red flags or unusual terms
-
-    3. KEY INSIGHTS: 5-8 specific, actionable insights that an agent needs to know immediately. These should be:
-       - Action items that need attention
-       - Potential deal risks or opportunities
-       - Unusual terms that could affect the transaction
-       - Missing information that needs to be obtained
-       - Compliance or legal considerations
-       - Items that may affect financing or closing
-
-    Format the analysis to be scannable with clear headers and bullet points where appropriate.
-
-    Please format the response as:
-    <analysis>
-        <document-type>REPC</document-type>
-        <summary>
-        This is a [document type] for [property address] between [parties] with a purchase price of $XXX and closing date of [date]. [One more key fact]."
-        </summary>
-        <analysis-text>
-        PARTIES AND PROPERTY:\n- Buyer: [name]\n- Seller: [name]\n- Property: [address]\n\nKEY TERMS:\n- Purchase Price: $XXX\n- Earnest Money: $XXX\n- Closing Date: [date]\n\n[Continue with other sections...]"
-        </analysis-text>
-        <key-insights>
-            ⚠️ Financing contingency expires in only 10 days - urgent action needed
-            💰 Earnest money of $X is above/below typical for this price range
-            📅 Closing date of X gives only Y days - may be aggressive timeline
-            🔍 Missing HOA documents - these must be obtained within X days
-            ✅ All signatures present and properly dated
-            🏠 Property being sold as-is - recommend thorough inspection
-            📋 Seller agreed to $X in repairs/credits
-            ⏰ Due diligence period ends [date] - schedule inspections immediately
-        </key-insights>
-    </analysis>
-
-    If you need to highlight anything please use <b>bold</b> html tags.
-    Make insights specific, actionable, and valuable for a busy real estate agent.
-"""
-
-DEFAULT_ANALYSIS_PROMPT = """
-You are an expert real estate agent analyzing a document for an agent who needs quick, actionable insights.
-
-Analyze this document and provide:
-
-**Document Type:** [Listing Agreement, Purchase Agreement, Loan Estimate, Appraisal Report, etc.]
-
-**Key Property Details:**
-- Address: [Full property address]
-- Price/Value: [Listed price, purchase price, or appraised value]
-- Property Type: [Single-family, condo, multi-family, etc.]
-- Bedrooms/Bathrooms: [If available]
-- Square Footage: [If available]
-- Year Built: [If available]
-
-**Financial Information:**
-- Purchase Price: [Amount]
-- Down Payment: [Amount and percentage]
-- Loan Amount: [If specified]
-- Interest Rate: [If specified]
-- Loan Type: [Conventional, FHA, VA, etc.]
-- Monthly Payment: [If calculated or specified]
-
-**Important Dates:**
-- Listing Date: [If applicable]
-- Offer Date: [If applicable]
-- Closing Date: [If specified]
-- Rate Lock Expiration: [If applicable]
-
-**Critical Terms & Conditions:**
-[List any important contingencies, special terms, or notable conditions]
-
-**Action Items for Agent:**
-[Highlight any time-sensitive items or required actions]Add commentMore actions
-
-Always prioritize information that would help a real estate professional make quick decisions or take necessary actions.
-
-Format the analysis to be scannable with clear headers and bullet points where appropriate.
-
-  Please format the response as:
-  <analysis>
-    <document-type>REPC or other document type like "Listing Agreement", "Loan Estimate", etc.;</document-type>
-    <summary>This is a [document type] for [property address] between [parties] with a purchase price of $XXX and closing date of [date]. [One more key fact]."</summary>
-    <key-metrics>
-            ⚠️ Financing contingency expires in only 10 days - urgent action needed
-            💰 Earnest money of $X is above/below typical for this price range
-            📅 Closing date of X gives only Y days - may be aggressive timeline
-            🔍 Missing HOA documents - these must be obtained within X days
-            ✅ All signatures present and properly dated
-            🏠 Property being sold as-is - recommend thorough inspection
-            📋 Seller agreed to $X in repairs/credits
-            ⏰ Due diligence period ends [date] - schedule inspections immediately
-    </key-metrics>
-    <property-details>Property Details</property-details>
-    <financial-info>
-        Purchase Price
-        Down Payment
-        Loan Amount
-        Interest Rate
-        Loan Type
-        Monthly Payment
-    </financial-info>
-    <important-dates>
-        Listing Date
-        Offer Date
-        Closing Date
-        Rate Lock Expiration
-    </important-dates>
-    <relevant-parties>
-        Party 1
-        Party 2
-    </relevant-parties>
-    <risk-factors>
-        Risk factor 1
-        Risk factor 2
-    </risk-factors>
-  </analysis>
-
-  If you need to highlight anything please use <b>bold</b> html tags.
-  Make insights specific, actionable, and valuable for a busy real estate agent.
-"""
 
 REPC_SUMMARY_PROMPT = """
     You are an expert real estate agent summarizing a document:
@@ -190,9 +58,22 @@ REPC_SUMMARY_PROMPT = """
     If you need to highlight anything please use <b>bold</b> html tags.
 """
 
+DEFAULT_SUMMARY_PROMPT = """
+    You are an expert real estate agent summarizing a document:
+    Summary should be a concise 2-3 sentence overview that tells a real estate agent exactly what this document is and its main purpose.
+    Document Type:** [Listing Agreement, Purchase Agreement, Loan Estimate, Appraisal Report, etc.]
+    Please format the response as:
+      <analysis>
+        <document-type>REPC or other document type like "Listing Agreement", "Loan Estimate", etc.;</document-type>
+        <summary>This is a [document type] for [property address] between [parties] with a purchase price of $XXX and closing date of [date]. [One more key fact]."</summary>
+      </analysis>
+     If you need to highlight anything please use <b>bold</b> html tags.
+"""
+
 DOCUMENT_ANALYSIS_PROMPTS = {
     "key-insights": """
-        Please provide 5-8 specific, actionable insights that an agent needs to know immediately. These should be:
+        Please provide 5-8 specific, actionable insights that an agent needs to know immediately. These should be
+        specific, actionable, and valuable for a busy real estate agent:
         - Action items that need attention
         - Potential deal risks or opportunities
         - Unusual terms that could affect the transaction
@@ -227,11 +108,11 @@ DOCUMENT_ANALYSIS_PROMPTS = {
         </key-insights>
         </analysis>
         If you need to highlight anything please use <b>bold</b> html tags.
-        Make insights specific, actionable, and valuable for a busy real estate agent.
     """,
     "deep-analysis": """
     Analyze this document content and provide
-    a detailed but scannable analysis text organized by sections. Focus on:
+    a detailed but scannable analysis text organized by sections. 
+     Make it specific, actionable, and valuable for a busy real estate agent. Focus on:
        - Key terms and conditions
        - Important dates and deadlines
        - Financial details (prices, deposits, fees)
@@ -241,7 +122,7 @@ DOCUMENT_ANALYSIS_PROMPTS = {
 
      For the following document content {text}
 
-        Please format the response as:
+    Format the response as:
     <analysis>
         <document-type>{document_type}</document-type>
         <analysis-text>
@@ -250,6 +131,100 @@ DOCUMENT_ANALYSIS_PROMPTS = {
     </analysis>
 
     If you need to highlight anything please use <b>bold</b> html tags.
-    Make insights specific, actionable, and valuable for a busy real estate agent.
+    """,
+    "financial-information": """
+    Analyze this document content and provide specific, actionable, and valuable for
+    a busy real estate agent financial information like:
+    - Purchase Price: [Amount]
+    - Down Payment: [Amount and percentage]
+    - Loan Amount: [If specified]
+    - Interest Rate: [If specified]
+    - Loan Type: [Conventional, FHA, VA, etc.]
+    - Monthly Payment: [If calculated or specified]
+
+    For the following document content {text}
+
+    Format the response as:
+    <analysis>
+        <document-type>{document_type}</document-type>
+        <financial-info>
+            Purchase Price
+            Down Payment
+            Loan Amount
+            Interest Rate
+            Loan Type
+            Monthly Payment
+        </financial-info>
+    </analysis>
+    If you need to highlight anything please use <b>bold</b> html tags.
+    """,
+    "property-details": """
+    Analyze this document content and provide specific, actionable, and valuable
+    for a busy real estate agent key property details like:
+    - Address: [Full property address]
+    - Price/Value: [Listed price, purchase price, or appraised value]
+    - Property Type: [Single-family, condo, multi-family, etc.]
+    - Bedrooms/Bathrooms: [If available]
+    - Square Footage: [If available]
+    - Year Built: [If available]
+    For the following document content {text}
+    Format the response as:
+    <analysis>
+        <document-type>{document_type}</document-type>
+        <property-details>Property Details</property-details>
+    </analysis>
+    If you need to highlight anything please use <b>bold</b> html tags.
+    """,
+    "important-dates": """
+    Analyze this document content and provide specific, actionable, and valuable for
+    a busy real estate agent important dates like:
+    - Listing Date: [If applicable]
+    - Offer Date: [If applicable]
+    - Closing Date: [If specified]
+    - Rate Lock Expiration: [If applicable]
+    For the following document content {text}
+    Format the response as:
+    <analysis>
+        <document-type>{document_type}</document-type>
+        <important-dates>
+            Listing Date
+            Offer Date
+            Closing Date
+            Rate Lock Expiration
+        </important-dates>
+    </analysis>
+    If you need to highlight anything please use <b>bold</b> html tags.
+    """,
+    "relevant-parties": """
+    Analyze this document content and provide specific, actionable, and valuable
+    for a busy real estate agent relevant parties like:
+    - Party 1: [Name and role]
+    - Party 2: [Name and role]
+    For the following document content {text}
+    Format the response as:
+    <analysis>
+        <document-type>{document_type}</document-type>
+        <relevant-parties>
+            Party 1
+            Party 2
+        </relevant-parties>
+    </analysis>
+    If you need to highlight anything please use <b>bold</b> html tags.
+    """,
+    "risk-factors": """
+    Analyze this document content and provide specific, actionable,
+    and valuable for a busy real estate agent risk factors like:
+    - Risk factor 1: [Description]
+    - Risk factor 2: [Description]
+    For the following document content {text}
+    Format the response as:
+    <analysis>
+        <document-type>{document_type}</document-type>
+        <risk-factors>
+            Risk factor 1
+            Risk factor 2
+        </risk-factors>
+    </analysis>
+    If you need to highlight anything please use <b>bold</b> html tags.
     """
 }

@@ -22,6 +22,10 @@ from react_agent.utils import load_chat_model
 from react_agent.tools.document_analysis import document_analysis, process_document_analysis
 from react_agent.prompts import DOCUMENT_ANALYSIS_PROMPTS
 from dotenv import load_dotenv
+from langchain_core.messages.utils import (
+    trim_messages,
+    count_tokens_approximately
+)
 
 load_dotenv()
 
@@ -72,10 +76,20 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
         memories=formatted,
     )
 
+    messages = trim_messages(
+        state.messages,
+        strategy="last",
+        token_counter=count_tokens_approximately,
+        max_tokens=1024,
+        start_on="human",
+        end_on=("human", "tool"),
+    )
+
     # Prepare messages with multimodal support
     messages_to_send = [{"role": "system", "content": system_message}]
 
-    for i, msg in enumerate(state.messages[-6:]):
+    for i, msg in enumerate(messages):
+        messages_to_send.append(msg)
         if msg.additional_kwargs and "prompt_key" in msg.additional_kwargs \
                 and "text" in msg.additional_kwargs and "document_type" in msg.additional_kwargs:
             prompt = DOCUMENT_ANALYSIS_PROMPTS.get(msg.additional_kwargs["prompt_key"], "")
@@ -88,12 +102,14 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
                     )
                 })
 
-        messages_to_send.append(msg)
+
     # Get the model's response
     response = cast(
         AIMessage,
         await model.ainvoke(messages_to_send),
     )
+
+    logging.info(f"Model response: {response}")
 
     # Handle the case when it's the last step and the model still wants to use a tool
     if state.is_last_step and response.tool_calls:
