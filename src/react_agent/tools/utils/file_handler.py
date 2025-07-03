@@ -7,7 +7,7 @@ from pathlib import Path
 import io
 import logging
 from react_agent.tools.utils.document_type_strategies import has_custom_handling, get_custom_messages
-from react_agent.prompts import DEFAULT_ANALYSIS_PROMPT
+from react_agent.prompts import DEFAULT_SUMMARY_PROMPT
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -65,7 +65,7 @@ def process_large_document(pdf_data: str, filename: str, estimated_tokens: float
         else:
             content_blocks.append({
                 "type": "text",
-                "text": DEFAULT_ANALYSIS_PROMPT
+                "text": DEFAULT_SUMMARY_PROMPT
             })
         content_blocks.append({
             "type": "text",
@@ -74,7 +74,7 @@ def process_large_document(pdf_data: str, filename: str, estimated_tokens: float
     else:
         content_blocks.append({
                 "type": "text",
-                "text": DEFAULT_ANALYSIS_PROMPT
+                "text": DEFAULT_SUMMARY_PROMPT
             })
         content_blocks.extend(process_images(pdf_data, filename))
     return content_blocks
@@ -115,7 +115,7 @@ def process_normal_document(pdf_data: str, filename: str):
         else:
             content_blocks.append({
                 "type": "text",
-                "text": DEFAULT_ANALYSIS_PROMPT
+                "text": DEFAULT_SUMMARY_PROMPT
             })
         content_blocks.append({
             "type": "text",
@@ -144,7 +144,7 @@ def process_text_documents(attachment: Dict[str, Any], filename: str):
     else:
         content_blocks.append({
             "type": "text",
-            "text": DEFAULT_ANALYSIS_PROMPT
+            "text": DEFAULT_SUMMARY_PROMPT
         })
     content_blocks.append({
         "type": "text",

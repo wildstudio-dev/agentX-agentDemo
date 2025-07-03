@@ -9,7 +9,7 @@ from typing import Annotated, Optional, Any
 from langchain_core.runnables import ensure_config, RunnableConfig
 from langgraph.config import get_config
 
-from react_agent.prompts import SECOND_SYSTEM_PROMPT, RECOMMEND_PROMPT, REPC_ANALYSIS_PROMPT
+from react_agent.prompts import SECOND_SYSTEM_PROMPT, RECOMMEND_PROMPT
 
 
 @dataclass(kw_only=True)
@@ -33,8 +33,8 @@ class Configuration:
 
     model: Annotated[str, {"__template_metadata__": {"kind": "llm"}}] = field(
         # default="anthropic/claude-opus-4-20250514",
-        default="openai/gpt-4.1",
-        # default="google_genai/gemini-2.5-flash-preview-05-20",
+        # default="openai/gpt-4.1",
+        default="google_genai/gemini-2.5-flash-preview-05-20",
         metadata={
             "description": "The name of the language model to use for the agent's main interactions. "
             "Should be in the form: provider/model-name."
