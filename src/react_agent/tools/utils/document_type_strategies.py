@@ -1,4 +1,4 @@
-from react_agent.prompts import REPC_ANALYSIS_PROMPT
+from react_agent.prompts import REPC_SUMMARY_PROMPT
 
 def is_repc(text):
     return "repc" in text.lower() or "real estate purchase contract" in text.lower()
@@ -7,7 +7,7 @@ def is_repc(text):
 def get_repc_message():
     return [{
         "type": "text",
-        "text": f"{REPC_ANALYSIS_PROMPT}"
+        "text": f"{REPC_SUMMARY_PROMPT}"
     }]
 
 
