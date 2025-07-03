@@ -109,8 +109,6 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
         await model.ainvoke(messages_to_send),
     )
 
-    logging.info(f"Model response: {response}")
-
     # Handle the case when it's the last step and the model still wants to use a tool
     if state.is_last_step and response.tool_calls:
         return {
