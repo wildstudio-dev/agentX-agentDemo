@@ -9,7 +9,7 @@ from react_agent.configuration import Configuration
 from langgraph.store.base import BaseStore
 import uuid
 from react_agent.tools.document_analysis import process_document_analysis
-
+import asyncio
 
 # def ensure_docs_have_user_id(
 #     docs: Sequence[Document], config: RunnableConfig
@@ -30,6 +30,20 @@ from react_agent.tools.document_analysis import process_document_analysis
 #         for doc in docs
 #     ]
 
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=4000, chunk_overlap=100)
+
+
+async def insert_memory(text, store, user_id):
+    mem_id = uuid.uuid4()
+    await store.aput(
+        ("property1", user_id),
+        key=str(mem_id),
+        value={"text": text},
+        # index=["text[*]"],
+    )
+    return mem_id
 
 async def index_docs(
     state: InputState,
@@ -56,18 +70,28 @@ async def index_docs(
 
     local_config = Configuration.from_runnable_config(config)
     user_id = local_config.user_id
-    mem_id = uuid.uuid4()
-    content = messages[0]["content"]
-    await store.aput(
-        ("property1", user_id),
-        key=str(mem_id),
-        value={"text":  content[2]["text"]},
-    )
-    # with retrieval.make_retriever(config) as retriever:
-        # stamped_docs = ensure_docs_have_user_id(state.docs, config)
 
-    # await retriever.aadd_documents(stamped_docs)
-    return {"messages": "delete"}
+    content = messages[0]["content"]
+    text = content[2]["text"]
+    text_splits = []
+    logging.info("=============================== in index graph")
+    logging.info(text)
+    logging.info("=============================== in index graph")
+    if len(text) / 4 > 4000:
+        logging.info("Splitting text: %s", len(text) / 4)
+        text_splits.extend(text_splitter.split_text(text))
+    else:
+        logging.info("Not splitting text: %s", len(text) / 4)
+        text_splits.append(text)
+    logging.info("Text splits: %s", len(text_splits))
+
+    saved_memories = await asyncio.gather(
+        *(
+            insert_memory(split, store, user_id)
+            for split in text_splits
+        )
+    )
+    return {"messages": str(saved_memories) }
 
 
 # Define a new graph
