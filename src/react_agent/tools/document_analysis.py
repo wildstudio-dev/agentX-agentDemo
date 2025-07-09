@@ -1,4 +1,5 @@
 import base64
+import logging
 import mimetypes
 from urllib.parse import urlparse
 import os
@@ -78,7 +79,9 @@ async def process_document_analysis(state):
     Internal function to process document analysis with state access.
     """
     messages_to_send = []
-    document_message = state.messages[-2]
+    logging.info(state.messages)
+    document_message = state.messages[-1]
+    logging.info(document_message)
     # Check if this is the most recent user message with attachments
     if (hasattr(document_message, 'type') and document_message.type == "human" and
             hasattr(document_message, 'additional_kwargs') and
