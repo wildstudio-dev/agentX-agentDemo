@@ -6,13 +6,18 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.graph import StateGraph
 from react_agent.state import InputState
 from react_agent.configuration import Configuration
+from react_agent.utils import get_token_size
 from langgraph.store.base import BaseStore
 import uuid
 import asyncio
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=4000, chunk_overlap=100)
+# This is not really a special number
+# Generally should be below 8000
+# roughly the max embedding size input of the common models
+SPLIT_TOKEN_COUNT = 4000
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=SPLIT_TOKEN_COUNT, chunk_overlap=100)
 
 
 async def insert_memory(text, store, user_id, property_id):
@@ -60,11 +65,11 @@ async def index_docs(
     # I am applying a text splitter here
     # since there is no built-in process for this
     # inside the embed process
-    if len(text) / 4 > 4000:
-        logging.info("Splitting text: %s", len(text) / 4)
+    if get_token_size(text) > SPLIT_TOKEN_COUNT:
+        logging.info("Splitting text: %s", get_token_size(text))
         text_splits.extend(text_splitter.split_text(text))
     else:
-        logging.info("Not splitting text: %s", len(text) / 4)
+        logging.info("Not splitting text: %s", get_token_size(text))
         text_splits.append(text)
     logging.info("Text splits: %s", len(text_splits))
 
