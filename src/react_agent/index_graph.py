@@ -21,7 +21,6 @@ async def insert_memory(text, store, user_id, property_id):
         (user_id, property_id),
         key=str(mem_id),
         value={"text": text},
-        # index=["text[*]"],
     )
     return mem_id
 
@@ -78,7 +77,5 @@ async def index_docs(
 builder = StateGraph(InputState, config_schema=Configuration)
 builder.add_node(index_docs)
 builder.add_edge("__start__", "index_docs")
-# Finally, we compile it!
-# This compiles it into a graph you can invoke and deploy.
 graph = builder.compile()
 graph.name = "IndexGraph"
