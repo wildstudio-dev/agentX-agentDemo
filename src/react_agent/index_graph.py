@@ -57,6 +57,9 @@ async def index_docs(
     logging.info("=============================== in index graph")
     logging.info(text)
     logging.info("=============================== in index graph")
+    # I am applying a text splitter here
+    # since there is no built-in process for this
+    # inside the embed process
     if len(text) / 4 > 4000:
         logging.info("Splitting text: %s", len(text) / 4)
         text_splits.extend(text_splitter.split_text(text))
