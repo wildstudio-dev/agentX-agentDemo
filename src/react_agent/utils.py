@@ -26,3 +26,6 @@ def load_chat_model(fully_specified_name: str) -> BaseChatModel:
     provider, model = fully_specified_name.split("/", maxsplit=1)
     return init_chat_model(model, model_provider=provider)
 
+
+def get_token_size(text):
+    return len(text) / 4
