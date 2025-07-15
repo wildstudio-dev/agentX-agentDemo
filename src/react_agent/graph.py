@@ -51,11 +51,17 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
 
     """Extract the user's state from the conversation and update the memory."""
     configurable = Configuration.from_runnable_config(config)
+    metadata = Configuration.from_metadata(config)
 
     memories = []
     try:
+        namespace_prefix = ("memories", configurable.user_id)
+        if metadata.property_id:
+            logging.info(f"Property ID found, using it in the namespace. {metadata.property_id}")
+            namespace_prefix = (configurable.user_id, metadata.property_id)
+        logging.info(f"Retrieving memories for namespace: {namespace_prefix}")
         memories = await store.asearch(
-            ("memories", configurable.user_id),
+            namespace_prefix,
             query=str([m.content for m in state.messages[-3:]]),
             limit=10,
         )

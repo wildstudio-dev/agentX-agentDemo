@@ -5,7 +5,7 @@ auth = Auth()
 
 @auth.authenticate
 async def get_current_user(
-        authorization: str | None,
+        authorization: str | None
 ):
     """Validate JWT tokens and extract user information."""
     logging.info("Authenticating user with token: %s", authorization)
@@ -19,7 +19,6 @@ async def get_current_user(
             logging.info("Token found")
         else:
             raise ValueError("Invalid token")
-        
         return {
             "identity": token,
         }
