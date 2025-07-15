@@ -22,8 +22,12 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
 
     response = client.models.embed_content(
         model="gemini-embedding-exp-03-07",
-        contents="What is the meaning of life?",
-        config=types.EmbedContentConfig(task_type="SEMANTIC_SIMILARITY")
+        contents=texts,
+        config=types.EmbedContentConfig(
+            task_type="SEMANTIC_SIMILARITY",
+            output_dimensionality=1536
+        )
     )
     print(response)
+    # print(len(response)
     return [e.values for e in response.embeddings]
