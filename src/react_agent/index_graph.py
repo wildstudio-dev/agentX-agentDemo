@@ -16,7 +16,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 # This is not really a special number
 # Generally should be below 8000
 # roughly the max embedding size input of the common models
-SPLIT_TOKEN_COUNT = 1000
+SPLIT_TOKEN_COUNT = 2000
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=SPLIT_TOKEN_COUNT, chunk_overlap=100)
 
 

@@ -60,6 +60,8 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
             logging.info(f"Property ID found, using it in the namespace. {metadata.property_id}")
             namespace_prefix = (configurable.user_id, metadata.property_id)
         logging.info(f"Retrieving memories for namespace: {namespace_prefix}")
+        namespaces = await store.alist_namespaces()
+        logging.info(f"Available namespaces: {namespaces}")
         memories = await store.asearch(
             namespace_prefix,
             query=str([m.content for m in state.messages[-3:]]),
