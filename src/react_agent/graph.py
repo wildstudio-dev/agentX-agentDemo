@@ -44,6 +44,11 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
     Returns:
         dict: A dictionary containing the model's response message.
     """
+
+    if len(state.messages) == 1 and state.messages[0].type == "ai":
+        logging.info("Skipping model call as the first message is AIMessage without tool calls.")
+        return {"messages": []}
+
     configuration = Configuration.from_context()
 
     # Initialize the model with tool binding. Change the model or add more tools here.
@@ -109,7 +114,6 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
                         document_type=msg.additional_kwargs["document_type"]
                     )
                 })
-
 
     # Get the model's response
     response = cast(
