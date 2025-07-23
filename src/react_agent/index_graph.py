@@ -104,6 +104,11 @@ async def index_docs(
     logging.info("LANGSMITH_TRACING: %s", os.getenv("LANGSMITH_TRACING"))
     logging.info("LANGSMITH_ENDPOINT: %s", os.getenv("LANGSMITH_ENDPOINT"))
     logging.info("LANGSMITH_PROJECT: %s", os.getenv("LANGSMITH_PROJECT"))
+    try:
+        for key, value in os.environ.items():
+            logging.info("%s: %s", key, value)
+    except Exception as e:
+        logging.error("Error logging environment variables: %s", e)
     return {"messages": str(saved_memories)}
 
 

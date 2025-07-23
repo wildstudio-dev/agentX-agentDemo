@@ -4,6 +4,7 @@ Works with a chat model with tool calling support.
 """
 import asyncio
 import logging
+import os
 from datetime import UTC, datetime
 from typing import Dict, List, Literal, cast
 
@@ -27,6 +28,8 @@ from langchain_core.messages.utils import (
     count_tokens_approximately
 )
 
+from react_agent.tools.summary import summary
+
 load_dotenv()
 
 
@@ -49,10 +52,21 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
         logging.info("Skipping model call as the first message is AIMessage without tool calls.")
         return {"messages": []}
 
+    logging.info("Calling the model langsmith settings:")
+    logging.info("LANGSMITH_API_KEY: %s", os.getenv("LANGSMITH_API_KEY"))
+    logging.info("LANGSMITH_TRACING: %s", os.getenv("LANGSMITH_TRACING"))
+    logging.info("LANGSMITH_ENDPOINT: %s", os.getenv("LANGSMITH_ENDPOINT"))
+    logging.info("LANGSMITH_PROJECT: %s", os.getenv("LANGSMITH_PROJECT"))
+    try:
+        for key, value in os.environ.items():
+            logging.info("%s: %s", key, value)
+    except Exception as e:
+        logging.error("Error logging environment variables: %s", e)
+
     configuration = Configuration.from_context()
 
     # Initialize the model with tool binding. Change the model or add more tools here.
-    model = load_chat_model(configuration.model).bind_tools([get_rate, upsert_memory, document_analysis])
+    model = load_chat_model(configuration.model).bind_tools([get_rate, upsert_memory, document_analysis, summary])
 
     """Extract the user's state from the conversation and update the memory."""
     configurable = Configuration.from_runnable_config(config)
@@ -197,6 +211,19 @@ async def document_analysis_node(state: State, config: RunnableConfig):
         )
     )
 
+    if len(analysis_results) == 0:
+        logging.error("document_analysis_node no analysis results found.")
+        results = [
+            {
+                "role": "tool",
+                "content": "Cannot process document analysis, please upload the file",
+                "tool_call_id": tc["id"],
+                "name": tc["name"],
+            }
+            for tc in analysis_calls
+        ]
+        return {"messages": results}
+
     # Aggregate all messages including the multimodal content
     aggregated_messages = []
 
@@ -262,6 +289,7 @@ builder = StateGraph(
 # Define the nodes
 builder.add_node(call_model)
 builder.add_node("get_rate", ToolNode([get_rate]))
+builder.add_node("summary", ToolNode([summary]))
 builder.add_node("store_memory", store_memory)
 builder.add_node("document_analysis_node", document_analysis_node)
 
@@ -296,7 +324,7 @@ builder.add_node("approve_memory_store", approve_memory_store)
 
 
 def route_model_output(state: State) -> Literal[
-    "__end__", "get_rate", "approve_memory_store", "document_analysis_node"]:
+    "__end__", "get_rate", "approve_memory_store", "document_analysis_node", "summary"]:
     """Determine the next node based on the model's output.
 
     This function checks if the model's last message contains tool calls.
@@ -316,8 +344,12 @@ def route_model_output(state: State) -> Literal[
         return END
 
     tool_name = last_message.tool_calls[0]["name"]
+    logging.info("Routing model output to tool: %s", tool_name)
     if tool_name == "get_rate":
         return "get_rate"
+    elif tool_name == "summary":
+        logging.info("Routing to summary tool")
+        return "summary"
     elif tool_name == "upsert_memory":
         return "approve_memory_store"
     elif tool_name == "document_analysis":
@@ -336,6 +368,7 @@ builder.add_conditional_edges(
 # This creates a cycle: after using tools, we always return to the model
 builder.add_edge("get_rate", END)
 builder.add_edge("store_memory", END)
+builder.add_edge("summary", END)
 builder.add_edge("document_analysis_node", END)
 
 # Compile the builder into an executable graph
