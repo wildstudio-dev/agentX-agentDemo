@@ -6,15 +6,24 @@ from langgraph.store.base import BaseStore
 from langchain_core.tools import InjectedToolArg
 from react_agent.configuration import Configuration
 
-async def summary(
+# Tool function for LangGraph binding
+async def summary(query: str) -> str:
+    """User requests summary of a specific document name
+    Args:
+        query (str): The query or request for summarization.
+    """
+    return "Summary tool called"
+
+async def process_summary(
         query: str,
-        *,
-        config: Annotated[RunnableConfig, InjectedToolArg],
-        store: Annotated[BaseStore, InjectedToolArg],
+        config: RunnableConfig,
+        store: BaseStore,
 ) -> str:
     """User requests summary of a specific document name
     Args:
         query (str): The query or request for summarization.
+        config (RunnableConfig): Configuration for the run.
+        store (BaseStore): Store for accessing memories.
     """
     configurable = Configuration.from_runnable_config(config)
     metadata = Configuration.from_metadata(config)

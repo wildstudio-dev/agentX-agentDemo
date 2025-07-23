@@ -28,7 +28,7 @@ from langchain_core.messages.utils import (
     count_tokens_approximately
 )
 
-from react_agent.tools.summary import summary
+from react_agent.tools.summary import summary, process_summary
 
 load_dotenv()
 
@@ -294,7 +294,7 @@ async def summary_node(state: State, config: RunnableConfig, *, store: BaseStore
     # Execute all summary calls concurrently
     summary_results = await asyncio.gather(
         *(
-            summary(**tc["args"], config=config, store=store)
+            process_summary(tc["args"]["query"], config, store)
             for tc in summary_calls
         )
     )
