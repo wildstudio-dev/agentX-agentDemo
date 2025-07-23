@@ -34,14 +34,13 @@ async def process_summary(
             logging.info(f"Property ID found, using it in the namespace. {metadata.property_id}")
             namespace_prefix = (configurable.user_id, "summary_" + metadata.property_id)
             logging.info(f"Retrieving memories for namespace: {namespace_prefix}")
-            namespaces = await store.alist_namespaces()
-            logging.info(f"Available namespaces: {namespaces}")
             memories = await store.asearch(
                 namespace_prefix,
                 query=query,
-                limit=3,
+                limit=1,
             )
-            formatted = "\n".join(f"[{mem.key}]: {mem.value} (similarity: {mem.score})" for mem in memories)
+            logging.info(f"Memories found: {memories}")
+            formatted = "\n".join(f"{mem.value}" for mem in memories)
     except Exception as e:
         logging.error(f"Error retrieving memories: {e}")
         formatted = "Error retrieving summary."
