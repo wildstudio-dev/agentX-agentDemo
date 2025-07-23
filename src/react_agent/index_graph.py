@@ -1,5 +1,6 @@
 """This "graph" simply exposes an endpoint for a user to upload docs to be indexed."""
 import logging
+import os
 from typing import Optional
 
 from langchain_core.runnables import RunnableConfig
@@ -79,6 +80,30 @@ async def index_docs(
             for split in text_splits
         )
     )
+    try:
+        document_id = last_message.additional_kwargs.get("documentId", None)
+        summary = last_message.additional_kwargs.get("summary", None)
+        document_name = last_message.additional_kwargs.get("documentName", None)
+        logging.info("Document ID: %s", document_id)
+        if document_id is not None and summary is not None and document_name is not None:
+            await store.aput(
+                (user_id, "summary_" + property_id),
+                key=str(document_id),
+                value={
+                    "summary": summary,
+                    "document_name": document_name,
+                },
+            )
+
+            logging.info("Saved summaries for document ID %s: %s", document_id, summary)
+    except Exception as e:
+        logging.error("Error saving summary: %s", e)
+
+    logging.info("Calling the model langsmith settings:")
+    logging.info("LANGSMITH_API_KEY: %s", os.getenv("LANGSMITH_API_KEY"))
+    logging.info("LANGSMITH_TRACING: %s", os.getenv("LANGSMITH_TRACING"))
+    logging.info("LANGSMITH_ENDPOINT: %s", os.getenv("LANGSMITH_ENDPOINT"))
+    logging.info("LANGSMITH_PROJECT: %s", os.getenv("LANGSMITH_PROJECT"))
     return {"messages": str(saved_memories)}
 
 
