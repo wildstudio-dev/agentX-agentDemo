@@ -278,6 +278,41 @@ async def document_analysis_node(state: State, config: RunnableConfig):
     return {"messages": results}
 
 
+async def summary_node(state: State, config: RunnableConfig, *, store: BaseStore):
+    """Handle summary tool calls with proper store and config access."""
+    if not state.messages:
+        logging.error("summary_node: No messages found in the state.")
+        return {"messages": []}
+    
+    last_message = state.messages[-1]
+    tool_calls = last_message.tool_calls
+    summary_calls = [
+        tc for tc in tool_calls
+        if tc["name"] == "summary"
+    ]
+    
+    # Execute all summary calls concurrently
+    summary_results = await asyncio.gather(
+        *(
+            summary(**tc["args"], config=config, store=store)
+            for tc in summary_calls
+        )
+    )
+    
+    # Format results as tool responses
+    results = [
+        {
+            "role": "tool",
+            "content": result,
+            "tool_call_id": tc["id"],
+            "name": tc["name"],
+        }
+        for tc, result in zip(summary_calls, summary_results)
+    ]
+    
+    return {"messages": results}
+
+
 # Define a new graph
 
 builder = StateGraph(
@@ -289,7 +324,7 @@ builder = StateGraph(
 # Define the nodes
 builder.add_node(call_model)
 builder.add_node("get_rate", ToolNode([get_rate]))
-builder.add_node("summary", ToolNode([summary]))
+builder.add_node("summary_node", summary_node)
 builder.add_node("store_memory", store_memory)
 builder.add_node("document_analysis_node", document_analysis_node)
 
@@ -324,7 +359,7 @@ builder.add_node("approve_memory_store", approve_memory_store)
 
 
 def route_model_output(state: State) -> Literal[
-    "__end__", "get_rate", "approve_memory_store", "document_analysis_node", "summary"]:
+    "__end__", "get_rate", "approve_memory_store", "document_analysis_node", "summary_node"]:
     """Determine the next node based on the model's output.
 
     This function checks if the model's last message contains tool calls.
@@ -349,7 +384,7 @@ def route_model_output(state: State) -> Literal[
         return "get_rate"
     elif tool_name == "summary":
         logging.info("Routing to summary tool")
-        return "summary"
+        return "summary_node"
     elif tool_name == "upsert_memory":
         return "approve_memory_store"
     elif tool_name == "document_analysis":
@@ -368,7 +403,7 @@ builder.add_conditional_edges(
 # This creates a cycle: after using tools, we always return to the model
 builder.add_edge("get_rate", END)
 builder.add_edge("store_memory", END)
-builder.add_edge("summary", END)
+builder.add_edge("summary_node", END)
 builder.add_edge("document_analysis_node", END)
 
 # Compile the builder into an executable graph
