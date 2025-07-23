@@ -283,14 +283,14 @@ async def summary_node(state: State, config: RunnableConfig, *, store: BaseStore
     if not state.messages:
         logging.error("summary_node: No messages found in the state.")
         return {"messages": []}
-    
+
     last_message = state.messages[-1]
     tool_calls = last_message.tool_calls
     summary_calls = [
         tc for tc in tool_calls
         if tc["name"] == "summary"
     ]
-    
+
     # Execute all summary calls concurrently
     summary_results = await asyncio.gather(
         *(
@@ -298,7 +298,7 @@ async def summary_node(state: State, config: RunnableConfig, *, store: BaseStore
             for tc in summary_calls
         )
     )
-    
+
     # Format results as tool responses
     results = [
         {
@@ -309,7 +309,7 @@ async def summary_node(state: State, config: RunnableConfig, *, store: BaseStore
         }
         for tc, result in zip(summary_calls, summary_results)
     ]
-    
+
     return {"messages": results}
 
 
