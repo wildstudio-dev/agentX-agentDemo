@@ -1,12 +1,9 @@
 import logging
-from typing import Annotated
 
 from langchain_core.runnables import RunnableConfig
 from langgraph.store.base import BaseStore
-from langchain_core.tools import InjectedToolArg
 from react_agent.configuration import Configuration
 
-# Tool function for LangGraph binding
 async def summary(query: str) -> str:
     """User requests summary of a specific document name
     Args:
@@ -18,7 +15,7 @@ async def process_summary(
         query: str,
         config: RunnableConfig,
         store: BaseStore,
-) -> str:
+) -> list[dict]:
     """User requests summary of a specific document name
     Args:
         query (str): The query or request for summarization.
@@ -27,7 +24,7 @@ async def process_summary(
     """
     configurable = Configuration.from_runnable_config(config)
     metadata = Configuration.from_metadata(config)
-    formatted = "Default summary"
+    formatted = []
     logging.info(f"Summary Metadata: {metadata}")
     try:
         if metadata.property_id:
@@ -40,9 +37,12 @@ async def process_summary(
                 limit=1,
             )
             logging.info(f"Memories found: {memories}")
-            formatted = "\n".join(f"{mem.value}" for mem in memories)
+            json_array = [
+                {"id": mem.key, **mem.value} for mem in memories
+            ]
+            formatted = json_array
     except Exception as e:
         logging.error(f"Error retrieving memories: {e}")
-        formatted = "Error retrieving summary."
     logging.info(f"Summarizing document: {query} {formatted}")
+    logging.info(f"Formatted summary: {formatted}")
     return formatted
