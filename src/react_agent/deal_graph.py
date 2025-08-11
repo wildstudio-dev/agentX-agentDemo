@@ -1,5 +1,4 @@
 import logging
-import os
 from datetime import UTC, datetime
 from typing import Dict, List, cast
 
@@ -9,18 +8,13 @@ from langgraph.constants import END
 from langgraph.graph import StateGraph
 from langgraph.store.base import BaseStore
 from react_agent.configuration import Configuration
-from react_agent.custom_get_rate_tool_v2 import get_rate
 from react_agent.state import InputState, State
-from react_agent.upsert_memory import upsert_memory
 from react_agent.utils import load_chat_model
-from react_agent.tools.document_analysis import document_analysis, process_document_analysis
 from dotenv import load_dotenv
 from langchain_core.messages.utils import (
     trim_messages,
     count_tokens_approximately
 )
-
-from react_agent.tools.summary import summary, process_summary
 
 load_dotenv()
 
@@ -39,18 +33,10 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
     Returns:
         dict: A dictionary containing the model's response message.
     """
-
-    logging.info("Calling the model langsmith settings:")
-    try:
-        for key, value in os.environ.items():
-            logging.info("%s: %s", key, value)
-    except Exception as e:
-        logging.error("Error logging environment variables: %s", e)
-
     configuration = Configuration.from_context()
 
     # Initialize the model with tool binding. Change the model or add more tools here.
-    model = load_chat_model(configuration.model).bind_tools([get_rate, upsert_memory, document_analysis, summary])
+    model = load_chat_model(configuration.model)
 
     """Extract the user's state from the conversation and update the memory."""
     configurable = Configuration.from_runnable_config(config)

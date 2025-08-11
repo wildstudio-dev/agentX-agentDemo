@@ -35,7 +35,8 @@ class Configuration:
     model: Annotated[str, {"__template_metadata__": {"kind": "llm"}}] = field(
         # default="anthropic/claude-opus-4-20250514",
         # default="openai/gpt-4.1",
-        default="google_genai/gemini-2.5-flash",
+        default="openai/gpt-5-mini",
+        # default="google_genai/gemini-2.5-flash",
         metadata={
             "description": "The name of the language model to use for the agent's main interactions. "
             "Should be in the form: provider/model-name."
