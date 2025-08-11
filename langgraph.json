@@ -2,7 +2,8 @@
   "dependencies": ["."],
   "graphs": {
     "agent": "./src/react_agent/graph.py:graph",
-    "index_graph": "./src/react_agent/index_graph.py:graph"
+    "index_graph": "./src/react_agent/index_graph.py:graph",
+    "deal_graph": "./src/react_agent/deal_graph.py:graph"
   },
   "env": ".env",
   "store": {
