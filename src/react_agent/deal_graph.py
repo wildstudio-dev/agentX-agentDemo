@@ -68,7 +68,7 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
     {formatted}
     </memories>"""
 
-    system_message = configuration.system_prompt.format(
+    system_message = configuration.deal_prompt.format(
         system_time=datetime.now(tz=UTC).isoformat(),
         memories=formatted,
     )

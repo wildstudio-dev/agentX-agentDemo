@@ -9,7 +9,7 @@ from typing import Annotated, Optional, Any
 from langchain_core.runnables import ensure_config, RunnableConfig
 from langgraph.config import get_config
 
-from react_agent.prompts import SECOND_SYSTEM_PROMPT, RECOMMEND_PROMPT
+from react_agent.prompts import SECOND_SYSTEM_PROMPT, RECOMMEND_PROMPT, DEAL_PROMPT
 
 
 @dataclass(kw_only=True)
@@ -27,6 +27,13 @@ class Configuration:
 
     recommend_prompt: str = field(
         default=RECOMMEND_PROMPT,
+        metadata={
+            "description": "The system prompt to optimise the product received from the Loan X get rate api"
+        },
+    )
+
+    deal_prompt: str = field(
+        default=DEAL_PROMPT,
         metadata={
             "description": "The system prompt to optimise the product received from the Loan X get rate api"
         },
