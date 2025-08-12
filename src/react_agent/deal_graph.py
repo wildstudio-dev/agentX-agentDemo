@@ -55,7 +55,7 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
             memories = await store.asearch(
                 namespace_prefix,
                 query=str([m.content for m in state.messages[-3:]]),
-                limit=5,
+                limit=3,
             )
             logging.info(f"Retrieved memories: {memories}")
     except Exception as e:
@@ -68,10 +68,18 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
     <memories>
     {formatted}
     </memories>"""
+    property_data = ""
+    document_names = ""
+    if metadata.property_data:
+        property_data = metadata.property_data
+    if metadata.document_names:
+        document_names = metadata.document_names
 
     system_message = configuration.deal_prompt.format(
         system_time=datetime.now(tz=UTC).isoformat(),
         memories=formatted,
+        property_data=property_data,
+        document_names=document_names,
     )
 
     messages = trim_messages(

@@ -17,6 +17,8 @@ class Configuration:
     """The configuration for the agent."""
     user_id: str = "default"
     property_id: str = None
+    property_data: str = None
+    document_names: str = None
     system_prompt: str = field(
         default=SECOND_SYSTEM_PROMPT,
         metadata={
