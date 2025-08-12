@@ -37,7 +37,7 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
     chat_model = init_chat_model(
         model,
         model_provider=provider,
-        max_tokens=256,
+        max_tokens=8000,
     )
 
     """Extract the user's state from the conversation and update the memory."""
