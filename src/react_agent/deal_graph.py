@@ -9,17 +9,15 @@ from langgraph.graph import StateGraph
 from langgraph.store.base import BaseStore
 from react_agent.configuration import Configuration
 from react_agent.state import InputState, State
-from react_agent.utils import load_chat_model
 from dotenv import load_dotenv
 from langchain_core.messages.utils import (
     trim_messages,
     count_tokens_approximately
 )
+from langchain.chat_models import init_chat_model
 
 load_dotenv()
 
-
-# Define the function that calls the model
 
 async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) -> Dict[str, List[AIMessage]]:
     """Call the LLM powering our "agent".
@@ -35,8 +33,12 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
     """
     configuration = Configuration.from_context()
 
-    # Initialize the model with tool binding. Change the model or add more tools here.
-    model = load_chat_model(configuration.model)
+    provider, model = configuration.model.split("/", maxsplit=1)
+    chat_model = init_chat_model(
+        model,
+        model_provider=provider,
+        max_tokens=256,
+    )
 
     """Extract the user's state from the conversation and update the memory."""
     configurable = Configuration.from_runnable_config(config)
@@ -44,19 +46,18 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
 
     memories = []
     try:
-        namespace_prefix = ("memories", configurable.user_id)
         if metadata.property_id:
             logging.info(f"Property ID found, using it in the namespace. {metadata.property_id}")
             namespace_prefix = (configurable.user_id, metadata.property_id)
-        logging.info(f"Retrieving memories for namespace: {namespace_prefix}")
-        namespaces = await store.alist_namespaces()
-        logging.info(f"Available namespaces: {namespaces}")
-        memories = await store.asearch(
-            namespace_prefix,
-            query=str([m.content for m in state.messages[-3:]]),
-            limit=10,
-        )
-        logging.info(f"Retrieved memories: {memories}")
+            logging.info(f"Retrieving memories for namespace: {namespace_prefix}")
+            namespaces = await store.alist_namespaces()
+            logging.info(f"Available namespaces: {namespaces}")
+            memories = await store.asearch(
+                namespace_prefix,
+                query=str([m.content for m in state.messages[-3:]]),
+                limit=5,
+            )
+            logging.info(f"Retrieved memories: {memories}")
     except Exception as e:
         logging.error(f"Error retrieving memories: {e}")
 
@@ -91,7 +92,7 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
     # Get the model's response
     response = cast(
         AIMessage,
-        await model.ainvoke(messages_to_send),
+        await chat_model.ainvoke(messages_to_send),
     )
 
     # Handle the case when it's the last step and the model still wants to use a tool
