@@ -408,5 +408,5 @@ builder.add_edge("document_analysis_node", END)
 
 # Compile the builder into an executable graph
 graph = builder.compile(
-    name="WillStudio LoanX Agent",
+    name="WillStudio Agent X Agent",
 )
