@@ -453,12 +453,12 @@ def get_rate(
         Loan-to-Value (LTV): {calculated_ltv:.1%}
         Interest Rate: {round(annual_interest_rate, 3)}%
         {va_text if loan_type == LoanType.VA else ""}
+        Loan Type: {loan_type_display}
+        Loan Term: {loan_term_years} years
     </loan-details>
     
     <assumptions>
-        • Loan Type: {loan_type_display}
         • Credit Score (FICO): {fico_score}
-        • Loan Term: {loan_term_years} years
         • Occupancy: Primary
         • Property Type: Single Family
         • Units: {units}"""
