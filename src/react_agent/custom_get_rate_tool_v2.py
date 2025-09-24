@@ -140,6 +140,7 @@ def parse_freddie_mac_rates():
             break
     return years_to_rate
 
+
 def fetch_freddie_mac_rate(loan_type: str, loan_term_years: int) -> float:
     """Fetch current Freddie Mac PMMS rate and add 0.5% margin.
     
@@ -178,6 +179,52 @@ class LoanType(Enum):
     FHA = "fha"
     VA = "va"
     JUMBO = "jumbo"
+
+
+class Occupancy(str, Enum):
+    """Property occupancy type enumeration"""
+    INVESTMENT_PROPERTY = "InvestmentProperty"
+    PRIMARY_RESIDENCE = "PrimaryResidence"
+    SECOND_HOME = "SecondHome"
+
+
+occupancy_display = {
+    Occupancy.INVESTMENT_PROPERTY: "Investment Property",
+    Occupancy.PRIMARY_RESIDENCE: "Primary Residence",
+    Occupancy.SECOND_HOME: "Second Home"
+}
+
+
+class PropertyType(str, Enum):
+    """Property type enumeration"""
+    SINGLE_FAMILY = "SingleFamily"
+    CONDO = "Condo"
+    MANUFACTURED_DOUBLE_WIDE = "ManufacturedDoubleWide"
+    CONDOTEL = "Condotel"
+    MODULAR = "Modular"
+    PUD = "PUD"
+    TIMESHARE = "Timeshare"
+    MANUFACTURED_SINGLE_WIDE = "ManufacturedSingleWide"
+    COOP = "Coop"
+    NON_WARRANTABLE_CONDO = "NonWarrantableCondo"
+    TOWNHOUSE = "Townhouse"
+    DETACHED_CONDO = "DetachedCondo"
+
+
+property_type_display = {
+    PropertyType.SINGLE_FAMILY: "Single Family",
+    PropertyType.CONDO: "Condo",
+    PropertyType.MANUFACTURED_DOUBLE_WIDE: "Manufactured Double Wide",
+    PropertyType.CONDOTEL: "Condotel",
+    PropertyType.MODULAR: "Modular",
+    PropertyType.PUD: "PUD",
+    PropertyType.TIMESHARE: "Timeshare",
+    PropertyType.MANUFACTURED_SINGLE_WIDE: "Manufactured Single Wide",
+    PropertyType.COOP: "Coop",
+    PropertyType.NON_WARRANTABLE_CONDO: "Non-Warrantable Condo",
+    PropertyType.TOWNHOUSE: "Townhouse",
+    PropertyType.DETACHED_CONDO: "Detached Condo",
+}
 
 
 def calculate_va_funding_fee(loan_amount: float, down_payment: float,
@@ -243,7 +290,9 @@ def get_rate(
         fico_score: int = 760,
         va_first_time: bool = True,
         va_exempt: bool = False,
-        ltv: Optional[Union[str, float]] = None
+        ltv: Optional[Union[str, float]] = None,
+        occupancy: Optional[Occupancy] = Occupancy.PRIMARY_RESIDENCE,
+        property_type: Optional[PropertyType] = PropertyType.SINGLE_FAMILY,
 ):
     """Calculate monthly mortgage payments with detailed breakdown. This is my primary tool for helping real estate professionals get instant payment quotes with current market rates.
     
@@ -459,8 +508,8 @@ def get_rate(
     
     <assumptions>
         • Credit Score (FICO): {fico_score}
-        • Occupancy: Primary
-        • Property Type: Single Family
+        • Occupancy: {occupancy_display[occupancy] if occupancy else "Primary Residence"}
+        • Property Type: {property_type_display[property_type] if property_type else "Single Family"}
         • Units: {units}"""
 
     if loan_type == LoanType.FHA and fha_upfront_mip > 0:
@@ -469,7 +518,7 @@ def get_rate(
     result += """
     </assumptions>
     """
-    if units is not 1:
+    if units is not 1 or occupancy is not Occupancy.PRIMARY_RESIDENCE or property_type is not PropertyType.SINGLE_FAMILY:
         result += """<disclaimer> This rate and payment estimate is generated using AI and is intended for illustrative purposes only.
         It does not constitute a loan offer, pre-qualification, or commitment to lend. The estimated rate is based on the
         Freddie Mac Primary Mortgage Market Survey® (PMMS®) average for the applicable loan type during the week of the
