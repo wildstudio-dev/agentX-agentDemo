@@ -519,7 +519,10 @@ def get_rate(
     </assumptions>
     """
     if units is not 1 or occupancy is not Occupancy.PRIMARY_RESIDENCE or property_type is not PropertyType.SINGLE_FAMILY:
-        result += """<disclaimer> Changing these values makes the rate more complex. For an accurate quote, connect with a LoanX loan officer: https://apps.apple.com/us/app/loanx-ai/id6743818733 
+        result += """<disclaimer> Changing these values makes the rate more complex. All borrowers must
+        complete a full loan application and receive official loan disclosures before relying on any figures for
+        decision-making. Please contact a licensed loan officer for a personalized quote and full details visiting
+        the LoanX IOS application https://apps.apple.com/us/app/loanx-ai/id6743818733 
         </disclaimer>
         """
 
