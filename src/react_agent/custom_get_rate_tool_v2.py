@@ -476,7 +476,9 @@ def get_rate(
         request, plus an assumed margin of 0.50%. Actual rates and terms may vary based on a variety of factors,
         including credit profile, property type, loan amount, down payment, and market conditions. All borrowers must
         complete a full loan application and receive official loan disclosures before relying on any figures for
-        decision-making. Please contact a licensed loan officer for a personalized quote and full details. </disclaimer>
+        decision-making. Please contact a licensed loan officer for a personalized quote and full details visiting
+        the LoanX IOS application https://apps.apple.com/us/app/loanx-ai/id6743818733
+        </disclaimer>
         """
 
     result += """
