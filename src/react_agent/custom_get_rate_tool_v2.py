@@ -519,14 +519,7 @@ def get_rate(
     </assumptions>
     """
     if units is not 1 or occupancy is not Occupancy.PRIMARY_RESIDENCE or property_type is not PropertyType.SINGLE_FAMILY:
-        result += """<disclaimer> This rate and payment estimate is generated using AI and is intended for illustrative purposes only.
-        It does not constitute a loan offer, pre-qualification, or commitment to lend. The estimated rate is based on the
-        Freddie Mac Primary Mortgage Market Survey® (PMMS®) average for the applicable loan type during the week of the
-        request, plus an assumed margin of 0.50%. Actual rates and terms may vary based on a variety of factors,
-        including credit profile, property type, loan amount, down payment, and market conditions. All borrowers must
-        complete a full loan application and receive official loan disclosures before relying on any figures for
-        decision-making. Please contact a licensed loan officer for a personalized quote and full details visiting
-        the LoanX IOS application https://apps.apple.com/us/app/loanx-ai/id6743818733
+        result += """<disclaimer> Changing these values makes the rate more complex. For an accurate quote, connect with a LoanX loan officer: https://apps.apple.com/us/app/loanx-ai/id6743818733 
         </disclaimer>
         """
 
