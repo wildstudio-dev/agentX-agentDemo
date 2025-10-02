@@ -490,7 +490,7 @@ def get_rate(
 
     # Total monthly payment
     total_monthly_payment = (
-            monthly_principal_interest + monthly_tax + monthly_insurance + monthly_mi
+            monthly_principal_interest + monthly_tax + monthly_insurance + monthly_mi + homeowners_association_fee
     )
 
     # Calculate property tax rate
