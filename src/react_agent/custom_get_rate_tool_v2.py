@@ -1,20 +1,4 @@
-# Key Changes Implemented:
-# Payment-First Output - Monthly payment prominently displayed at the top
-# Regulatory Disclaimer - Comprehensive disclaimer protecting real estate agents
-# Dynamic Rate Fetching - Integrates Freddie Mac PMMS + 0.5% margin
-# Enhanced Assumptions - Shows Purchase Price, Down Payment, Loan Amount, and LTV
-# FHA Corrections - Proper upfront MIP (1.75%) and monthly MIP (0.55%) calculations
-# VA Loan Support - Full funding fee table with first-time/subsequent usage
-# Jumbo Loan Support - Automatic detection when loan exceeds conforming limits
-# Improved Tax/Insurance Display - Shows annual amounts and tax rates
-# Updated Defaults - Primary residence, single family, 760 FICO, proper occupancy
 import os
-# New Features:
-# Smart Loan Type Detection - Auto-switches to jumbo when appropriate
-# LTV Input Support - Can specify loan-to-value ratio directly
-# VA Funding Fee Logic - Handles exempt veterans and different down payment tiers
-# Real-time Rate Fetching - Gets current Freddie Mac rates with fallback
-# Enhanced Error Handling - Better validation and user-friendly messages
 
 import re
 import requests
@@ -293,6 +277,7 @@ def get_rate(
         ltv: Optional[Union[str, float]] = None,
         occupancy: Optional[Occupancy] = Occupancy.PRIMARY_RESIDENCE,
         property_type: Optional[PropertyType] = PropertyType.SINGLE_FAMILY,
+        homeowners_association_fee: int = 0
 ):
     """Calculate monthly mortgage payments with detailed breakdown. This is my primary tool for helping real estate professionals get instant payment quotes with current market rates.
     
@@ -310,6 +295,9 @@ def get_rate(
         va_first_time: For VA loans, whether this is first-time usage. Defaults to True.
         va_exempt: For VA loans, whether veteran is exempt from funding fee. Defaults to False.
         ltv: Loan-to-value ratio. Can be used instead of down payment.
+        occupancy: Property occupancy type. Defaults to Primary Residence.
+        property_type: Property type. Defaults to Single Family.
+        homeowners_association_fee: Monthly HOA (Homeowners Association Fee) fee. Defaults to 0.
     """
 
     # Parse input values with error handling
@@ -480,7 +468,11 @@ def get_rate(
     <breakdown>
         Principal & Interest: ${round(monthly_principal_interest, 2):,}
         Property Taxes: ${round(monthly_tax, 2):,} (${round(annual_property_tax, 2):,} annually at {property_tax_rate:.2f}%)
-        Insurance: ${round(monthly_insurance, 2):,} (${round(annual_home_insurance, 2):,} annually)"""
+        Insurance: ${round(monthly_insurance, 2):,} (${round(annual_home_insurance, 2):,} annually)
+        """
+
+    if homeowners_association_fee and homeowners_association_fee > 0:
+        result += f"\n        HOA Fees: ${round(homeowners_association_fee, 2):,}"
 
     if monthly_mi > 0:
         mi_type = "PMI" if loan_type == LoanType.CONVENTIONAL else "MIP"
