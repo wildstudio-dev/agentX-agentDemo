@@ -261,6 +261,47 @@ def validate_normalize_loan_type(loan_type):
     return loan_type
 
 
+def get_conventional_mi_rate(ltv) -> float:
+    if ltv < 0.85:
+        return 0.0012
+    elif ltv < 0.90:
+        return 0.0021
+    elif ltv < 0.95:
+        return 0.0030
+    elif ltv <= 0.97:
+        return 0.0043
+    else:
+        # not proper but prefer not to block the logic
+        return 0.0050
+
+
+def get_fha_mi_rate(ltv, term, loan_amount) -> float:
+    if term > 15:
+        if loan_amount <= 726200:
+            if ltv <= 0.95:
+                return 0.005
+            else:
+                return 0.0055
+        else:
+            if ltv <= 0.95:
+                return 0.007
+            else:
+                return 0.0075
+    else:
+        if loan_amount <= 726200:
+            if ltv <= 0.90:
+                return 0.0015
+            else:
+                return 0.004
+        else:
+            if ltv <= 0.78:
+                return 0.0015
+            elif 0.78 < ltv <= 0.90:
+                return 0.004
+            else:
+                return 0.0065
+
+
 def get_rate(
         home_price: Optional[Union[str, int, float]] = None,
         loan_type: Union[LoanType, str] = LoanType.CONVENTIONAL,
@@ -401,8 +442,8 @@ def get_rate(
 
     # Handle FHA upfront MIP
     fha_upfront_mip = 0
+    base_loan_amount = loan_amount
     if loan_type == LoanType.FHA:
-        base_loan_amount = loan_amount
         fha_upfront_mip = base_loan_amount * 0.0175  # 1.75% upfront MIP
         loan_amount = base_loan_amount + fha_upfront_mip  # Add upfront MIP to loan amount
 
@@ -434,12 +475,14 @@ def get_rate(
 
     # Calculate mortgage insurance
     monthly_mi = 0.0
-    if loan_type == LoanType.CONVENTIONAL and calculated_ltv > 0.80:
-        # PMI for conventional loans over 80% LTV
-        monthly_mi = (loan_amount * 0.005) / 12  # 0.5% annually
+    mi_rate = 0.0
+    if loan_type == LoanType.CONVENTIONAL:
+        mi_rate = get_conventional_mi_rate(calculated_ltv)
+        monthly_mi = (loan_amount * mi_rate) / 12
     elif loan_type == LoanType.FHA:
-        # Monthly MIP for FHA loans (0.55% annually)
-        monthly_mi = (loan_amount * 0.0055) / 12
+        mi_rate = get_fha_mi_rate(calculated_ltv, loan_term_years, base_loan_amount)
+        # TODO: Use the proper formula
+        monthly_mi = (loan_amount * mi_rate) / 12
 
     # Monthly property tax and insurance
     monthly_tax = annual_property_tax / 12
@@ -477,6 +520,8 @@ def get_rate(
     if monthly_mi > 0:
         mi_type = "PMI" if loan_type == LoanType.CONVENTIONAL else "MIP"
         result += f"\n        {mi_type}: ${round(monthly_mi, 2):,}"
+        # add mi_rate
+        result += f" (at {mi_rate * 100:.2f}% annually)"
 
     va_text = ""
     if loan_type == LoanType.VA:
