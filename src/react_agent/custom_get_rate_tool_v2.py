@@ -302,6 +302,55 @@ def get_fha_mi_rate(ltv, term, loan_amount) -> float:
                 return 0.0065
 
 
+def calculate_monthly_premium(interest, orig_mtg, p_i, upfront, mip):
+    """Calculate monthly mortgage insurance premium.
+
+    Args:
+        interest: Annual interest rate (percentage)
+        orig_mtg: Original mortgage amount
+        p_i: Monthly principal and interest payment
+        upfront: Upfront MIP factor (e.g., 0.0175 for 1.75%)
+        mip: Annual MIP factor (e.g., 0.0085 for 0.85%)
+
+    Returns:
+        Monthly mortgage insurance premium
+    """
+    try:
+        logging.info("Calculating monthly premium...")
+        last_val = orig_mtg
+        total_amt = last_val  # initialize
+
+        # Only loop through the first 12 months
+        for i in range(2, 14):
+            hold_val = last_val * interest
+            hold_val = round(hold_val, 2)
+
+            hold_val = hold_val / 1200
+            hold_val = round(hold_val, 2)
+
+            hold_val = hold_val + last_val
+            hold_val = hold_val - p_i
+
+            last_val = hold_val
+            total_amt = total_amt + last_val
+
+        # Apply final calculations
+        total_amt = total_amt / 12
+        total_amt = total_amt * mip
+        total_amt = round(total_amt, 2)
+
+        total_amt = total_amt / (1 + upfront)
+        total_amt = round(total_amt, 2)
+
+        total_amt = total_amt / 12
+        total_amt = round(total_amt, 2)
+        logging.info(f"Monthly premium calculated: {total_amt}")
+        return total_amt
+    except Exception as e:
+        logging.error(f"Error calculating monthly premium: {e}")
+        return (orig_mtg * mip) / 12  # Fallback calculation
+
+
 def get_rate(
         home_price: Optional[Union[str, int, float]] = None,
         loan_type: Union[LoanType, str] = LoanType.CONVENTIONAL,
@@ -481,8 +530,9 @@ def get_rate(
         monthly_mi = (loan_amount * mi_rate) / 12
     elif loan_type == LoanType.FHA:
         mi_rate = get_fha_mi_rate(calculated_ltv, loan_term_years, base_loan_amount)
-        # TODO: Use the proper formula
-        monthly_mi = (loan_amount * mi_rate) / 12
+        monthly_mi = calculate_monthly_premium(
+            annual_interest_rate, base_loan_amount, monthly_principal_interest, 0.0175, mi_rate
+        )
 
     # Monthly property tax and insurance
     monthly_tax = annual_property_tax / 12
