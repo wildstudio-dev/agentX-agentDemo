@@ -262,11 +262,13 @@ def validate_normalize_loan_type(loan_type):
 
 
 def get_conventional_mi_rate(ltv) -> float:
-    if ltv < 0.85:
+    if ltv <= 0.80:
+        return 0
+    if ltv <= 0.85:
         return 0.0012
-    elif ltv < 0.90:
+    elif ltv <= 0.90:
         return 0.0021
-    elif ltv < 0.95:
+    elif ltv <= 0.95:
         return 0.0030
     elif ltv <= 0.97:
         return 0.0043
