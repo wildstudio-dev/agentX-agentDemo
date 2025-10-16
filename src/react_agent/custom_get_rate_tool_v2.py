@@ -607,7 +607,7 @@ def get_rate(
     result += """
     </assumptions>
     """
-    if units is not 1 or occupancy is not Occupancy.PRIMARY_RESIDENCE or property_type is not PropertyType.SINGLE_FAMILY:
+    if units != 1 or occupancy != Occupancy.PRIMARY_RESIDENCE or property_type != PropertyType.SINGLE_FAMILY:
         result += """<disclaimer> These adjustments add complexity to the rate. For a reliable quote and full details, connect with a licensed LoanX loan officer.
         </disclaimer>
         """
