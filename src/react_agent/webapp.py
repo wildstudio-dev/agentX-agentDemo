@@ -44,7 +44,7 @@ Now, write the message using the details below:
 @app.get("/custom/health")
 async def health_check():
     """Health check endpoint for custom routes."""
-    return {"status": "healthy", "service": "real-estate-ai-agent", "custom_routes": True}
+    return {"status": "working", "service": "real-estate-ai-agent", "custom_routes": True}
 
 
 @app.post("/custom/generate-sms")
