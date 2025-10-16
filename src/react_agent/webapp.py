@@ -107,10 +107,10 @@ async def generate_sms(request: Request):
             loan_officers_str = str(loan_officers)
 
         # Initialize OpenAI model
-        model_name = os.getenv("OPENAI_MODEL", "gpt-5-nano")
+        model_name = os.getenv("OPENAI_MODEL", "gpt-4.1")
         llm = ChatOpenAI(
             model=model_name,
-            # temperature=0.8
+            temperature=0.9
         )
 
         # Format the prompt
@@ -124,9 +124,7 @@ async def generate_sms(request: Request):
         )
 
         # Generate the SMS message
-        response = await llm.ainvoke(formatted_prompt,
-                                     # temperature=0.8
-                                     )
+        response = await llm.ainvoke(formatted_prompt, temperature=0.9)
         sms_message = response.content.strip()
 
         return {
