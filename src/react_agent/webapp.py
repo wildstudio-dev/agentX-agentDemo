@@ -107,8 +107,11 @@ async def generate_sms(request: Request):
             loan_officers_str = str(loan_officers)
 
         # Initialize OpenAI model
-        model_name = os.getenv("OPENAI_MODEL", "gpt-5-mini")
-        llm = ChatOpenAI(model=model_name)
+        model_name = os.getenv("OPENAI_MODEL", "gpt-4.1")
+        llm = ChatOpenAI(
+            model=model_name,
+            temperature=0.8
+        )
 
         # Format the prompt
         formatted_prompt = SMS_GENERATION_PROMPT.format(
@@ -121,7 +124,7 @@ async def generate_sms(request: Request):
         )
 
         # Generate the SMS message
-        response = await llm.ainvoke(formatted_prompt)
+        response = await llm.ainvoke(formatted_prompt, temperature=0.8)
         sms_message = response.content.strip()
 
         return {
@@ -136,17 +139,3 @@ async def generate_sms(request: Request):
             status_code=500,
             detail=f"Failed to generate SMS: {str(e)}"
         )
-
-
-@app.get("/custom/info")
-async def custom_info():
-    """Information about custom routes."""
-    return {
-        "service": "Real Estate AI Agent - Custom Routes",
-        "version": "1.0.0",
-        "endpoints": {
-            "health": "/custom/health (GET)",
-            "generate_sms": "/custom/generate-sms (POST)",
-            "info": "/custom/info (GET)"
-        }
-    }
