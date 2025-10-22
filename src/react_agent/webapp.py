@@ -20,7 +20,10 @@ app = FastAPI(
 
 
 # System prompt for SMS generation
-SMS_GENERATION_PROMPT = """You are a real estate agent. Write a concise SMS to facilitate a connection between a loan officer(s) and a buyer(s) about a property. Use a friendly, professional tone, and include the price, down payment, loan amount, and monthly payment if available. Address both parties by name and make it clear the loan officer(s) should reach out to the buyer(s).
+SMS_GENERATION_PROMPT = """You are a real estate agent. Write a concise SMS to facilitate a connection between a loan
+officer(s) and a buyer(s) about a property. Use a friendly, professional tone, and include the price, down payment,
+loan amount, and monthly payment if available. Address both parties by name and make it clear the loan officer(s)
+should reach out to the buyer(s).
 
 Do NOT include:
 - Sign-offs like "Best," "Regards," "Sincerely," "Thanks," etc.
@@ -29,8 +32,8 @@ Do NOT include:
 
 This is an SMS text message. End the message naturally after conveying the information.
 
-Example:
-Hey Mike, please connect with John about a property. These are the rough numbers — Price $500k, Down 20%, Loan $300k, Monthly Payment $2,937. They're ready to talk rates.
+Example: Hey Mike, please connect with John about a property. These are the rough numbers — Price $500k, Down 20%,
+Loan $300k, Monthly Payment $2,937. They're ready to talk rates.
 
 Now, write the message using the details below:
 - Buyer(s): {buyers}
@@ -53,8 +56,8 @@ async def generate_sms(request: Request):
     Generate an SMS message to connect buyers with loan officers about a property.
 
     Expects JSON body with:
-    - buyers: String (e.g., "John") or list of objects with 'name' field (e.g., [{"name": "John"}])
-    - loan_officers: String (e.g., "Mike") or list of objects with 'name' field (e.g., [{"name": "Mike"}])
+    - buyers: (Optional) String (e.g., "John") or list of objects with 'name' field (e.g., [{"name": "John"}])
+    - loan_officers: (Optional) String (e.g., "Mike") or list of objects with 'name' field (e.g., [{"name": "Mike"}])
     - price: Property price string (e.g., "1000", "$1,000", "1k")
     - down_payment: Down payment amount string (e.g., "30000", "$30,000")
     - loan_amount: Loan amount string (e.g., "300000", "$300,000", "300 000")
@@ -64,8 +67,8 @@ async def generate_sms(request: Request):
         # Parse request body as dict to avoid Pydantic issues
         body: Dict[str, Any] = await request.json()
 
-        # Validate required fields
-        required_fields = ["buyers", "loan_officers", "price", "down_payment", "loan_amount", "monthly_payment"]
+        # Validate required fields (buyers and loan_officers are now optional)
+        required_fields = ["price", "down_payment", "loan_amount", "monthly_payment"]
         missing_fields = [field for field in required_fields if field not in body]
         if missing_fields:
             raise HTTPException(
@@ -73,14 +76,15 @@ async def generate_sms(request: Request):
                 detail=f"Missing required fields: {', '.join(missing_fields)}"
             )
 
-        # Extract data - handle both string and list formats
-        buyers = body.get("buyers", [])
-        loan_officers = body.get("loan_officers", [])
+        # Extract data - handle both string and list formats, default to empty if not provided
+        buyers = body.get("buyers", "")
+        loan_officers = body.get("loan_officers", "")
 
-        if not buyers or not loan_officers:
+        # Require at least one of buyers or loan_officers to be present
+        if not buyers and not loan_officers:
             raise HTTPException(
                 status_code=422,
-                detail="At least one buyer and one loan officer required"
+                detail="At least one buyer or one loan officer is required"
             )
 
         # Format names - handle both string and list of objects
