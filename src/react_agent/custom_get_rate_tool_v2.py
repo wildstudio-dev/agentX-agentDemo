@@ -583,7 +583,7 @@ def get_rate(
 
     # Format down payment percentage per client spec: whole numbers without decimals, others with 2
     down_pct = round((down_payment / home_price) * 100, 2)
-    down_pct_str = f"{int(down_pct)}%" if down_pct == int(down_pct) else f"{down_pct:.2f}%"
+    down_pct_str = f"{int(down_pct)}%" if down_pct % 1 == 0 else f"{down_pct:.2f}%"
 
     result += f"""
     </breakdown>
