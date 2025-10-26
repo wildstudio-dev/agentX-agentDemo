@@ -581,16 +581,12 @@ def get_rate(
         if va_exempt:
             va_text += " - EXEMPT"
 
-    # Format down payment percentage per client spec: whole numbers without decimals, others with 2
-    down_pct = round((down_payment / home_price) * 100, 2)
-    down_pct_str = f"{int(down_pct)}%" if down_pct % 1 == 0 else f"{down_pct:.2f}%"
-
     result += f"""
     </breakdown>
-
+    
     <loan-details>
         Purchase Price: ${round(home_price, 2):,}
-        Down Payment: ${round(down_payment, 2):,} ({down_pct_str})
+        Down Payment: ${round(down_payment, 2):,} ({(down_payment / home_price) * 100:.1f}%)
         Loan Amount: ${round(loan_amount, 2):,}
         Loan-to-Value (LTV): {calculated_ltv:.1%}
         Interest Rate: {round(annual_interest_rate, 3)}%
