@@ -472,8 +472,8 @@ def get_rate(
             }
 
     # Calculate LTV
-    calculated_ltv = loan_amount / home_price if home_price > 0 else 0
 
+    calculated_ltv = round(loan_amount / home_price, 3) if home_price > 0 else 0
     # Validate LTV limits
     if loan_type == LoanType.CONVENTIONAL and calculated_ltv > 0.95:
         if calculated_ltv > 0.965:
@@ -581,12 +581,19 @@ def get_rate(
         if va_exempt:
             va_text += " - EXEMPT"
 
+    # Format down payment percentage: no decimals for whole numbers, 2 decimals otherwise
+    down_payment_percent = (down_payment / home_price) * 100
+    if down_payment_percent == int(down_payment_percent):
+        down_payment_percent_str = f"{int(down_payment_percent)}%"
+    else:
+        down_payment_percent_str = f"{down_payment_percent:.2f}%"
+
     result += f"""
     </breakdown>
-    
+
     <loan-details>
         Purchase Price: ${round(home_price, 2):,}
-        Down Payment: ${round(down_payment, 2):,} ({(down_payment / home_price) * 100:.1f}%)
+        Down Payment: ${round(down_payment, 2):,} ({down_payment_percent_str})
         Loan Amount: ${round(loan_amount, 2):,}
         Loan-to-Value (LTV): {calculated_ltv:.1%}
         Interest Rate: {round(annual_interest_rate, 3)}%
