@@ -582,7 +582,7 @@ def get_rate(
             va_text += " - EXEMPT"
 
     # Format down payment percentage: no decimals for whole numbers, 2 decimals otherwise
-    down_payment_percent = (down_payment / home_price) * 100
+    down_payment_percent = round((down_payment / home_price) * 100, 2)
     if down_payment_percent == int(down_payment_percent):
         down_payment_percent_str = f"{int(down_payment_percent)}%"
     else:
