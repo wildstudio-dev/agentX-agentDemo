@@ -16,7 +16,7 @@ from langgraph.prebuilt import ToolNode
 from langgraph.store.base import BaseStore
 from langgraph.types import Command, interrupt
 from react_agent.configuration import Configuration
-from react_agent.custom_get_rate_tool_v2 import get_rate
+from react_agent.custom_get_rate_tool_v3 import get_rate
 from react_agent.state import InputState, State
 from react_agent.upsert_memory import upsert_memory
 from react_agent.utils import load_chat_model
