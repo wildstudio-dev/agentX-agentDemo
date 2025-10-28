@@ -20,20 +20,21 @@ app = FastAPI(
 
 
 # System prompt for SMS generation
-SMS_GENERATION_PROMPT = """You are a real estate agent. Write a concise SMS to facilitate a connection between a loan
-officer(s) and a buyer(s) about a property. Use a friendly, professional tone, and include the price, down payment,
-loan amount, and monthly payment if available. Address both parties by name and make it clear the loan officer(s)
-should reach out to the buyer(s).
+SMS_GENERATION_PROMPT = """You are a friendly connector helping introduce a loan officer to a potential buyer. Write a casual,
+conversational SMS that facilitates the introduction in a natural way. Focus on making a warm connection rather than
+listing specifications. Use the financial details to provide context, but present them naturally and conversationally
+(e.g., "around the $500K range" or "checking out a place for about $500K").
 
 Do NOT include:
 - Sign-offs like "Best," "Regards," "Sincerely," "Thanks," etc.
 - Placeholder text in brackets like [Your Name], [Agent Name], etc.
 - Email signatures or closings
+- Formal business language or overly structured formatting
 
-This is an SMS text message. End the message naturally after conveying the information.
+This is a casual SMS introduction. Keep it friendly and conversational, like you're connecting two people you know.
 
-Example: Hey Mike, please connect with John about a property. These are the rough numbers — Price $500k, Down 20%,
-Loan $300k, Monthly Payment $2,937. They're ready to talk rates.
+Example: Hey Mike, wanted to connect you with John — they're checking out a place around the $500K range and could use
+your input on loan options. Figured I'd make the intro so you two can chat directly.
 
 Now, write the message using the details below:
 - Buyer(s): {buyers}
