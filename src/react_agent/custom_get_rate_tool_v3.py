@@ -359,6 +359,203 @@ def calculate_monthly_premium(interest, orig_mtg, p_i, upfront, mip):
         return (orig_mtg * mip) / 12  # Fallback calculation
 
 
+def calculate_monthly_pi_payment(loan_amount: float, annual_rate: float, term_years: int) -> float:
+    """Calculate monthly principal and interest payment.
+
+    Args:
+        loan_amount: The loan amount
+        annual_rate: Annual interest rate as percentage
+        term_years: Loan term in years
+
+    Returns:
+        Monthly P&I payment amount
+    """
+    monthly_rate = annual_rate / 12 / 100
+    total_payments = term_years * 12
+
+    if monthly_rate > 0:
+        return (
+            loan_amount *
+            (monthly_rate * (1 + monthly_rate) ** total_payments)
+            / ((1 + monthly_rate) ** total_payments - 1)
+        )
+    else:
+        return loan_amount / total_payments
+
+
+def calculate_buydown_scenarios(loan_amount: float, base_rate: float, term_years: int) -> dict:
+    """Calculate temporary buydown scenarios (3/1, 2/1, 1/1) with subsidy costs.
+
+    Args:
+        loan_amount: The loan amount (first lien only, P&I basis)
+        base_rate: The base annual interest rate as percentage
+        term_years: Loan term in years
+
+    Returns:
+        Dictionary with buydown scenarios and subsidy calculations
+    """
+    # Calculate base (full rate) monthly P&I payment
+    base_payment = calculate_monthly_pi_payment(loan_amount, base_rate, term_years)
+
+    scenarios = {
+        "standard": {
+            "type": "Standard",
+            "payment": base_payment,
+            "rate": base_rate,
+            "years": []
+        }
+    }
+
+    # 3/1 Buydown: Year 1 = base - 3%, Year 2 = base - 2%, Year 3 = base - 1%, Year 4+ = base
+    buydown_3_1_years = []
+    total_subsidy_3_1 = 0
+    for year, rate_reduction in [(1, 3.0), (2, 2.0), (3, 1.0)]:
+        reduced_rate = base_rate - rate_reduction
+        reduced_payment = calculate_monthly_pi_payment(loan_amount, reduced_rate, term_years)
+        monthly_savings = base_payment - reduced_payment
+        annual_subsidy = monthly_savings * 12
+        total_subsidy_3_1 += annual_subsidy
+
+        buydown_3_1_years.append({
+            "year": year,
+            "rate": reduced_rate,
+            "payment": reduced_payment,
+            "monthly_savings": monthly_savings,
+            "annual_subsidy": annual_subsidy
+        })
+
+    scenarios["3_1"] = {
+        "type": "3/1 Buydown",
+        "years": buydown_3_1_years,
+        "base_payment": base_payment,
+        "base_rate": base_rate,
+        "total_subsidy": total_subsidy_3_1
+    }
+
+    # 2/1 Buydown: Year 1 = base - 2%, Year 2 = base - 1%, Year 3+ = base
+    buydown_2_1_years = []
+    total_subsidy_2_1 = 0
+    for year, rate_reduction in [(1, 2.0), (2, 1.0)]:
+        reduced_rate = base_rate - rate_reduction
+        reduced_payment = calculate_monthly_pi_payment(loan_amount, reduced_rate, term_years)
+        monthly_savings = base_payment - reduced_payment
+        annual_subsidy = monthly_savings * 12
+        total_subsidy_2_1 += annual_subsidy
+
+        buydown_2_1_years.append({
+            "year": year,
+            "rate": reduced_rate,
+            "payment": reduced_payment,
+            "monthly_savings": monthly_savings,
+            "annual_subsidy": annual_subsidy
+        })
+
+    scenarios["2_1"] = {
+        "type": "2/1 Buydown",
+        "years": buydown_2_1_years,
+        "base_payment": base_payment,
+        "base_rate": base_rate,
+        "total_subsidy": total_subsidy_2_1
+    }
+
+    # 1/1 Buydown: Year 1 = base - 1%, Year 2+ = base
+    buydown_1_1_years = []
+    total_subsidy_1_1 = 0
+    for year, rate_reduction in [(1, 1.0)]:
+        reduced_rate = base_rate - rate_reduction
+        reduced_payment = calculate_monthly_pi_payment(loan_amount, reduced_rate, term_years)
+        monthly_savings = base_payment - reduced_payment
+        annual_subsidy = monthly_savings * 12
+        total_subsidy_1_1 += annual_subsidy
+
+        buydown_1_1_years.append({
+            "year": year,
+            "rate": reduced_rate,
+            "payment": reduced_payment,
+            "monthly_savings": monthly_savings,
+            "annual_subsidy": annual_subsidy
+        })
+
+    scenarios["1_1"] = {
+        "type": "1/1 Buydown",
+        "years": buydown_1_1_years,
+        "base_payment": base_payment,
+        "base_rate": base_rate,
+        "total_subsidy": total_subsidy_1_1
+    }
+
+    return scenarios
+
+
+def format_buydown_output(scenarios: dict) -> str:
+    """Format buydown scenarios into XML output string.
+
+    Args:
+        scenarios: Dictionary of buydown scenarios from calculate_buydown_scenarios
+
+    Returns:
+        Formatted XML string with buydown options
+    """
+    output = """
+    <buydown-options>"""
+
+    # Standard (no buydown)
+    standard = scenarios["standard"]
+    output += f"""
+        <variant type="Standard">
+            All Months: ${round(standard['payment'], 2):,} @ {round(standard['rate'], 3)}%
+        </variant>"""
+
+    # 3/1 Buydown
+    scenario_3_1 = scenarios["3_1"]
+    output += f"""
+
+        <variant type="3/1 Buydown">"""
+    for year_data in scenario_3_1["years"]:
+        output += f"""
+            Year {year_data['year']}: ${round(year_data['payment'], 2):,} @ {round(year_data['rate'], 3)}% (saves ${round(year_data['monthly_savings'], 2):,}/mo, ${round(year_data['annual_subsidy'], 2):,} annual subsidy)"""
+    output += f"""
+            Year 4+: ${round(scenario_3_1['base_payment'], 2):,} @ {round(scenario_3_1['base_rate'], 3)}%
+
+            Total Upfront Subsidy: ${round(scenario_3_1['total_subsidy'], 2):,}
+        </variant>"""
+
+    # 2/1 Buydown
+    scenario_2_1 = scenarios["2_1"]
+    output += f"""
+
+        <variant type="2/1 Buydown">"""
+    for year_data in scenario_2_1["years"]:
+        output += f"""
+            Year {year_data['year']}: ${round(year_data['payment'], 2):,} @ {round(year_data['rate'], 3)}% (saves ${round(year_data['monthly_savings'], 2):,}/mo, ${round(year_data['annual_subsidy'], 2):,} annual subsidy)"""
+    output += f"""
+            Year 3+: ${round(scenario_2_1['base_payment'], 2):,} @ {round(scenario_2_1['base_rate'], 3)}%
+
+            Total Upfront Subsidy: ${round(scenario_2_1['total_subsidy'], 2):,}
+        </variant>"""
+
+    # 1/1 Buydown
+    scenario_1_1 = scenarios["1_1"]
+    output += f"""
+
+        <variant type="1/1 Buydown">"""
+    for year_data in scenario_1_1["years"]:
+        output += f"""
+            Year {year_data['year']}: ${round(year_data['payment'], 2):,} @ {round(year_data['rate'], 3)}% (saves ${round(year_data['monthly_savings'], 2):,}/mo, ${round(year_data['annual_subsidy'], 2):,} annual subsidy)"""
+    output += f"""
+            Year 2+: ${round(scenario_1_1['base_payment'], 2):,} @ {round(scenario_1_1['base_rate'], 3)}%
+
+            Total Upfront Subsidy: ${round(scenario_1_1['total_subsidy'], 2):,}
+        </variant>"""
+
+    output += """
+    </buydown-options>
+
+    <buydown-note>Subsidy amounts represent the upfront cost paid by seller, lender, or builder to reduce the buyer's interest rate during the initial years.</buydown-note>"""
+
+    return output
+
+
 def calculate_second_lien_payment(second_lien_amount: float,
                                   second_lien_rate: float,
                                   second_lien_type: SecondLienType,
@@ -436,7 +633,7 @@ def get_rate(
         occupancy: Property occupancy type. Defaults to Primary Residence.
         property_type: Property type. Defaults to Single Family.
         homeowners_association_fee: Monthly HOA (Homeowners Association Fee) fee. Defaults to 0.
-        second_lien_amount: Amount of second lien/subordinate financing. Can be dollar amount or percentage (e.g., "10%" or "50000").
+        second_lien_amount: Amount of second lien/subordinate financing/down payment assistance (DPA). Can be dollar amount or percentage (e.g., "10%" or "50000").
         second_lien_type: Type of second lien: 'fully_amortized' or 'interest_only'. Defaults to 'interest_only'.
         second_lien_rate: Annual interest rate for second lien. Defaults to first lien rate + 1.0%.
         second_lien_term_years: Term for fully amortized second liens. Defaults to 30 years.
@@ -522,7 +719,6 @@ def get_rate(
         # Convert second lien percentage to dollars now that we have home_price
         if second_lien_amount is not None and second_lien_is_percentage:
             second_lien_amount = home_price * second_lien_amount
-            second_lien_is_percentage = False  # Mark as converted to prevent double conversion
 
     # Handle LTV input
     if ltv is not None:
@@ -801,6 +997,12 @@ def get_rate(
 
     result += """
     </assumptions>"""
+
+    # Calculate and add buydown scenarios
+    # Use base_loan_amount for FHA (without upfront MIP), otherwise use the loan_amount without fees
+    buydown_loan_amount = base_loan_amount if loan_type == LoanType.FHA else (loan_amount - va_funding_fee if loan_type == LoanType.VA else loan_amount)
+    buydown_scenarios = calculate_buydown_scenarios(buydown_loan_amount, annual_interest_rate, loan_term_years)
+    result += format_buydown_output(buydown_scenarios)
 
     if units != 1 or occupancy != Occupancy.PRIMARY_RESIDENCE or property_type != PropertyType.SINGLE_FAMILY:
         result += """
