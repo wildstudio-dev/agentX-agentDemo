@@ -15,12 +15,12 @@ dependencies = [
     "langchain-google-genai>=2.0.0",
     "langchain>=0.2.14",
     "langchain-fireworks>=0.1.7",
+    "langchain-text-splitters>=0.2.0",
     "python-dotenv>=1.0.1",
     "PyPDF2>=3.0.0",
     "Pillow>=10.0.0",
     "pypdfium2>=4.0.0",
     "beautifulsoup4>=4.12.2",
-    "python-dotenv>=1.0.1",
     "google-genai>=1.25.0",
     "fastapi>=0.119.0"
 ]
