@@ -498,11 +498,12 @@ def calculate_buydown_scenarios(loan_amount: float, base_rate: float, term_years
     return scenarios
 
 
-def format_buydown_output(scenarios: dict) -> str:
+def format_buydown_output(scenarios: dict, home_price: float) -> str:
     """Format buydown scenarios into XML output string.
 
     Args:
         scenarios: Dictionary of buydown scenarios from calculate_buydown_scenarios
+        home_price: Purchase price to calculate subsidy percentages
 
     Returns:
         Formatted XML string with buydown options
@@ -528,7 +529,7 @@ def format_buydown_output(scenarios: dict) -> str:
     output += f"""
             Year 4+: ${round(scenario_3_1['base_payment'], 2):,} @ {round(scenario_3_1['base_rate'], 3)}%
 
-            Total Upfront Subsidy: ${round(scenario_3_1['total_subsidy'], 2):,}
+            Total Upfront Subsidy: ${round(scenario_3_1['total_subsidy'], 2):,} ({(scenario_3_1['total_subsidy'] / home_price * 100):.2f}% of purchase price)
         </variant>"""
 
     # 2/1 Buydown
@@ -542,7 +543,7 @@ def format_buydown_output(scenarios: dict) -> str:
     output += f"""
             Year 3+: ${round(scenario_2_1['base_payment'], 2):,} @ {round(scenario_2_1['base_rate'], 3)}%
 
-            Total Upfront Subsidy: ${round(scenario_2_1['total_subsidy'], 2):,}
+            Total Upfront Subsidy: ${round(scenario_2_1['total_subsidy'], 2):,} ({(scenario_2_1['total_subsidy'] / home_price * 100):.2f}% of purchase price)
         </variant>"""
 
     # 1/1 Buydown
@@ -556,7 +557,7 @@ def format_buydown_output(scenarios: dict) -> str:
     output += f"""
             Year 2+: ${round(scenario_1_1['base_payment'], 2):,} @ {round(scenario_1_1['base_rate'], 3)}%
 
-            Total Upfront Subsidy: ${round(scenario_1_1['total_subsidy'], 2):,}
+            Total Upfront Subsidy: ${round(scenario_1_1['total_subsidy'], 2):,} ({(scenario_1_1['total_subsidy'] / home_price * 100):.2f}% of purchase price)
         </variant>"""
 
     output += """
@@ -990,38 +991,51 @@ def get_rate(
         {va_text}"""
 
     result += f"""
-    </loan-details>
+    </loan-details>"""
+
+    # Only show assumptions for Conventional loans with LTV > 80% and MI
+    if loan_type == LoanType.CONVENTIONAL and calculated_ltv > 0.80 and monthly_mi > 0:
+        result += f"""
 
     <assumptions>
-        • Credit Score (FICO): {fico_score}
+        MI Calculation Assumptions:
+        • Credit Score: {fico_score}
         • Occupancy: {occupancy_display[occupancy] if occupancy else "Primary Residence"}
         • Property Type: {property_type_display[property_type] if property_type else "Single Family"}
-        • Units: {units}"""
-
-    if loan_type == LoanType.FHA and fha_upfront_mip > 0:
-        result += f"""
-        • FHA Upfront MIP: ${round(fha_upfront_mip, 2):,} (financed)"""
-
-    if second_lien_amount is not None and second_lien_amount > 0:
-        result += f"""
-        • Second lien rate assumption: First lien rate + 1.0%"""
-
-    result += """
+        • PMI Rate: {mi_rate * 100:.2f}% per year (Estimate)
     </assumptions>"""
 
     # Calculate and add buydown scenarios
     # Use base_loan_amount for FHA (without upfront MIP), otherwise use the loan_amount without fees
     buydown_loan_amount = base_loan_amount if loan_type == LoanType.FHA else (loan_amount - va_funding_fee if loan_type == LoanType.VA else loan_amount)
     buydown_scenarios = calculate_buydown_scenarios(buydown_loan_amount, annual_interest_rate, loan_term_years)
-    result += format_buydown_output(buydown_scenarios)
+    result += format_buydown_output(buydown_scenarios, home_price)
 
+    # Collect all applicable disclaimers
+    disclaimers = []
+
+    # Complex property disclaimer
     if units != 1 or occupancy != Occupancy.PRIMARY_RESIDENCE or property_type != PropertyType.SINGLE_FAMILY:
-        result += """
-    <disclaimer>These adjustments add complexity to the rate. For a reliable quote and full details, connect with a licensed LoanX loan officer.</disclaimer>"""
+        disclaimers.append("These adjustments add complexity to the rate. For a reliable quote and full details, connect with a licensed LoanX loan officer.")
 
+    # Second lien disclaimer
     if second_lien_amount is not None and second_lien_amount > 0:
+        disclaimers.append("Second lien calculations are estimates. Actual rates and terms may vary by lender. Consult with a licensed loan officer for accurate quotes on subordinate financing.")
+
+    # MI Disclaimer for High LTV Conventional Loans
+    if loan_type == LoanType.CONVENTIONAL and calculated_ltv > 0.80 and monthly_mi > 0:
+        disclaimers.append("This loan requires Private Mortgage Insurance (PMI) due to LTV exceeding 80%. PMI can typically be removed once you reach 20% equity through payments or appreciation. Contact your lender for PMI removal requirements.")
+
+    # Output disclaimers if any exist
+    if disclaimers:
         result += """
-    <disclaimer>Second lien calculations are estimates. Actual rates and terms may vary by lender. Consult with a licensed loan officer for accurate quotes on subordinate financing.</disclaimer>"""
+
+    <disclaimer>"""
+        for disclaimer in disclaimers:
+            result += f"""
+        • {disclaimer}"""
+        result += """
+    </disclaimer>"""
 
     result += """
 </rate-calculation>
