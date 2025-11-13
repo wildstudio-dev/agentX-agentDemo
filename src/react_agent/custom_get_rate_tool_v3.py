@@ -130,17 +130,28 @@ def fetch_freddie_mac_rate(loan_type: str, loan_term_years: int) -> float:
 
     Args:
         loan_type: Type of loan to get rate for
+        loan_term_years: Term of the loan in years
 
     Returns:
         Current rate + 0.5% margin, or fallback rate if fetch fails
     """
     try:
+        # If exact term not found, use the closest available term (15 or 30 years)
+        # Terms closer to 15 (like 5, 10) use 15-year rate
+        # Terms closer to 30 (like 20, 40, 50) use 30-year rate
+        if loan_term_years < 20:
+            closest_term = "15"
+        else:
+            closest_term = "30"
+        logging.info(f"Closest Term {closest_term}")
+        # Freddie mac has only 15 and 30 years
         years_to_rate = parse_freddie_mac_rates()
-        latest_rate = years_to_rate.get(str(loan_term_years), None)
+        latest_rate = years_to_rate.get(closest_term, None)
         if latest_rate is not None:
             base_rate = float(latest_rate)
             logging.info(f"Freddie Mac rate for {loan_term_years}-Yr: {base_rate}%")
             return base_rate + 0.5  # Add 0.5% margin
+
         logging.info(f"Freddie Mac rate not found for {loan_term_years}-Yr, using fallback.")
 
     except Exception as e:
