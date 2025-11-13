@@ -990,23 +990,18 @@ def get_rate(
         {va_text}"""
 
     result += f"""
-    </loan-details>
+    </loan-details>"""
+
+    # Only show assumptions for Conventional loans with LTV > 80% and MI
+    if loan_type == LoanType.CONVENTIONAL and calculated_ltv > 0.80 and monthly_mi > 0:
+        result += f"""
 
     <assumptions>
-        • Credit Score (FICO): {fico_score}
+        MI Calculation Assumptions:
+        • Credit Score: {fico_score}
         • Occupancy: {occupancy_display[occupancy] if occupancy else "Primary Residence"}
         • Property Type: {property_type_display[property_type] if property_type else "Single Family"}
-        • Units: {units}"""
-
-    if loan_type == LoanType.FHA and fha_upfront_mip > 0:
-        result += f"""
-        • FHA Upfront MIP: ${round(fha_upfront_mip, 2):,} (financed)"""
-
-    if second_lien_amount is not None and second_lien_amount > 0:
-        result += f"""
-        • Second lien rate assumption: First lien rate + 1.0%"""
-
-    result += """
+        • PMI Rate: {mi_rate * 100:.2f}% per year (Estimate)
     </assumptions>"""
 
     # Calculate and add buydown scenarios
