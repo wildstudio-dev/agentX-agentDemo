@@ -1015,13 +1015,31 @@ def get_rate(
     buydown_scenarios = calculate_buydown_scenarios(buydown_loan_amount, annual_interest_rate, loan_term_years)
     result += format_buydown_output(buydown_scenarios)
 
-    if units != 1 or occupancy != Occupancy.PRIMARY_RESIDENCE or property_type != PropertyType.SINGLE_FAMILY:
-        result += """
-    <disclaimer>These adjustments add complexity to the rate. For a reliable quote and full details, connect with a licensed LoanX loan officer.</disclaimer>"""
+    # Collect all applicable disclaimers
+    disclaimers = []
 
+    # Complex property disclaimer
+    if units != 1 or occupancy != Occupancy.PRIMARY_RESIDENCE or property_type != PropertyType.SINGLE_FAMILY:
+        disclaimers.append("These adjustments add complexity to the rate. For a reliable quote and full details, connect with a licensed LoanX loan officer.")
+
+    # Second lien disclaimer
     if second_lien_amount is not None and second_lien_amount > 0:
+        disclaimers.append("Second lien calculations are estimates. Actual rates and terms may vary by lender. Consult with a licensed loan officer for accurate quotes on subordinate financing.")
+
+    # MI Disclaimer for High LTV Conventional Loans
+    if loan_type == LoanType.CONVENTIONAL and calculated_ltv > 0.80 and monthly_mi > 0:
+        disclaimers.append("This loan requires Private Mortgage Insurance (PMI) due to LTV exceeding 80%. PMI can typically be removed once you reach 20% equity through payments or appreciation. Contact your lender for PMI removal requirements.")
+
+    # Output disclaimers if any exist
+    if disclaimers:
         result += """
-    <disclaimer>Second lien calculations are estimates. Actual rates and terms may vary by lender. Consult with a licensed loan officer for accurate quotes on subordinate financing.</disclaimer>"""
+
+    <disclaimer>"""
+        for disclaimer in disclaimers:
+            result += f"""
+        • {disclaimer}"""
+        result += """
+    </disclaimer>"""
 
     result += """
 </rate-calculation>
