@@ -498,11 +498,12 @@ def calculate_buydown_scenarios(loan_amount: float, base_rate: float, term_years
     return scenarios
 
 
-def format_buydown_output(scenarios: dict) -> str:
+def format_buydown_output(scenarios: dict, home_price: float) -> str:
     """Format buydown scenarios into XML output string.
 
     Args:
         scenarios: Dictionary of buydown scenarios from calculate_buydown_scenarios
+        home_price: Purchase price to calculate subsidy percentages
 
     Returns:
         Formatted XML string with buydown options
@@ -528,7 +529,7 @@ def format_buydown_output(scenarios: dict) -> str:
     output += f"""
             Year 4+: ${round(scenario_3_1['base_payment'], 2):,} @ {round(scenario_3_1['base_rate'], 3)}%
 
-            Total Upfront Subsidy: ${round(scenario_3_1['total_subsidy'], 2):,}
+            Total Upfront Subsidy: ${round(scenario_3_1['total_subsidy'], 2):,} ({(scenario_3_1['total_subsidy'] / home_price * 100):.2f}% of purchase price)
         </variant>"""
 
     # 2/1 Buydown
@@ -542,7 +543,7 @@ def format_buydown_output(scenarios: dict) -> str:
     output += f"""
             Year 3+: ${round(scenario_2_1['base_payment'], 2):,} @ {round(scenario_2_1['base_rate'], 3)}%
 
-            Total Upfront Subsidy: ${round(scenario_2_1['total_subsidy'], 2):,}
+            Total Upfront Subsidy: ${round(scenario_2_1['total_subsidy'], 2):,} ({(scenario_2_1['total_subsidy'] / home_price * 100):.2f}% of purchase price)
         </variant>"""
 
     # 1/1 Buydown
@@ -556,7 +557,7 @@ def format_buydown_output(scenarios: dict) -> str:
     output += f"""
             Year 2+: ${round(scenario_1_1['base_payment'], 2):,} @ {round(scenario_1_1['base_rate'], 3)}%
 
-            Total Upfront Subsidy: ${round(scenario_1_1['total_subsidy'], 2):,}
+            Total Upfront Subsidy: ${round(scenario_1_1['total_subsidy'], 2):,} ({(scenario_1_1['total_subsidy'] / home_price * 100):.2f}% of purchase price)
         </variant>"""
 
     output += """
@@ -1008,7 +1009,7 @@ def get_rate(
     # Use base_loan_amount for FHA (without upfront MIP), otherwise use the loan_amount without fees
     buydown_loan_amount = base_loan_amount if loan_type == LoanType.FHA else (loan_amount - va_funding_fee if loan_type == LoanType.VA else loan_amount)
     buydown_scenarios = calculate_buydown_scenarios(buydown_loan_amount, annual_interest_rate, loan_term_years)
-    result += format_buydown_output(buydown_scenarios)
+    result += format_buydown_output(buydown_scenarios, home_price)
 
     # Collect all applicable disclaimers
     disclaimers = []
