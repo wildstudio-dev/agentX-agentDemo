@@ -1004,6 +1004,11 @@ def get_rate(
     buydown_scenarios = calculate_buydown_scenarios(buydown_loan_amount, annual_interest_rate, loan_term_years)
     result += format_buydown_output(buydown_scenarios)
 
+    # Add MI disclaimer for Conventional loans with LTV > 80%
+    if loan_type == LoanType.CONVENTIONAL and calculated_ltv > 0.80 and monthly_mi > 0:
+        result += """
+    <disclaimer>MI displayed is an estimate based on a 760 FICO, owner-occupied, single-family residence with standard coverage assumptions.</disclaimer>"""
+
     if units != 1 or occupancy != Occupancy.PRIMARY_RESIDENCE or property_type != PropertyType.SINGLE_FAMILY:
         result += """
     <disclaimer>These adjustments add complexity to the rate. For a reliable quote and full details, connect with a licensed LoanX loan officer.</disclaimer>"""
