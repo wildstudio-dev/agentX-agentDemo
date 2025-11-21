@@ -12,7 +12,6 @@ from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.constants import END
 from langgraph.graph import StateGraph
-from langgraph.prebuilt import ToolNode
 from langgraph.store.base import BaseStore
 from langgraph.types import Command, interrupt
 from react_agent.configuration import Configuration
@@ -73,6 +72,8 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
     metadata = Configuration.from_metadata(config)
 
     memories = []
+    metadata_rate = metadata.rate if hasattr(metadata, 'rate') else None
+    logging.info(f"Rate from metadata: {metadata_rate}")
     try:
         namespace_prefix = ("memories", configurable.user_id)
         if metadata.property_id:
@@ -146,7 +147,7 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
             ]
         }
     # Return the model's response as a list to be added to existing messages
-    return {"messages": [response]}
+    return {"messages": [response] }
 
 
 async def store_memory(
@@ -313,6 +314,85 @@ async def summary_node(state: State, config: RunnableConfig, *, store: BaseStore
     return {"messages": results}
 
 
+async def get_rate_node(state: State, config: RunnableConfig):
+    """Custom node to handle get_rate tool calls with metadata rate injection.
+
+    This node intercepts get_rate tool calls and injects the metadata.rate value
+    if no annual_interest_rate is explicitly provided in the tool call.
+
+    Args:
+        state (State): The current state of the conversation
+        config (RunnableConfig): Configuration including metadata
+
+    Returns:
+        dict: Dictionary containing tool response messages
+    """
+    if not state.messages:
+        logging.error("get_rate_node: No messages found in the state.")
+        return {"messages": []}
+
+    last_message = state.messages[-1]
+    tool_calls = last_message.tool_calls
+    get_rate_calls = [
+        tc for tc in tool_calls
+        if tc["name"] == "get_rate"
+    ]
+
+    if not get_rate_calls:
+        logging.warning("get_rate_node called but no get_rate tool calls found")
+        return {"messages": []}
+
+    # Extract metadata rate
+    metadata = Configuration.from_metadata(config)
+    metadata_rate = metadata.rate if hasattr(metadata, 'rate') else None
+
+    # Also check state for rate
+    state_rate = state.rate if hasattr(state, 'rate') else None
+
+    # Prefer metadata rate, fallback to state rate
+    available_rate = metadata_rate or state_rate
+
+    if available_rate:
+        logging.info(f"get_rate_node: Available rate from metadata/state: {available_rate}")
+
+    # Process each get_rate call
+    results = []
+    for tc in get_rate_calls:
+        args = tc["args"].copy()  # Create a copy to avoid modifying original
+
+        # Check if annual_interest_rate is already provided in the tool call
+        provided_rate = args.get("annual_interest_rate")
+
+        # Inject rate if not provided and available_rate exists and is valid
+        if (provided_rate is None or provided_rate == 0) and available_rate and available_rate > 0:
+            logging.info(f"get_rate_node: Injecting rate {available_rate} into get_rate call")
+            args["annual_interest_rate"] = available_rate
+        elif provided_rate:
+            logging.info(f"get_rate_node: Using provided rate {provided_rate} from tool call")
+        else:
+            logging.info("get_rate_node: No rate provided, will use default behavior (fetch Freddie Mac rate)")
+
+        # Execute the get_rate function
+        try:
+            result = get_rate(**args)
+            results.append({
+                "role": "tool",
+                "content": result,
+                "tool_call_id": tc["id"],
+                "name": tc["name"],
+            })
+        except Exception as e:
+            logging.error(f"Error executing get_rate: {e}")
+            results.append({
+                "role": "tool",
+                "content": f"Error calculating rate: {str(e)}",
+                "tool_call_id": tc["id"],
+                "name": tc["name"],
+            })
+
+    return {"messages": results}
+
+
 # Define a new graph
 
 builder = StateGraph(
@@ -323,7 +403,7 @@ builder = StateGraph(
 
 # Define the nodes
 builder.add_node(call_model)
-builder.add_node("get_rate", ToolNode([get_rate]))
+builder.add_node("get_rate", get_rate_node)
 builder.add_node("summary_node", summary_node)
 builder.add_node("store_memory", store_memory)
 builder.add_node("document_analysis_node", document_analysis_node)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass, field, fields
 from typing import Annotated, Optional, Any
@@ -19,6 +20,7 @@ class Configuration:
     property_id: str = None
     property_data: str = None
     document_names: str = None
+    rate: float = None
     system_prompt: str = field(
         default=SECOND_SYSTEM_PROMPT,
         metadata={
@@ -69,6 +71,7 @@ class Configuration:
             config = None
         config = ensure_config(config)
         configurable = config.get("configurable") or {}
+        logging.info(f"Configurable 1. {configurable.keys()}")
         _fields = {f.name for f in fields(cls) if f.init}
         return cls(**{k: v for k, v in configurable.items() if k in _fields})
 
@@ -84,6 +87,7 @@ class Configuration:
         # in configurable and passes their value along.
         # Owner is present in metadata not in the configurable, so it won't be present
         # But user_id is set internally and its present in configurable and would be passed
+        logging.info(f"Configurable 2. {configurable.keys()}")
         values: dict[str, Any] = {
             f.name: os.environ.get(f.name.upper(), configurable.get(f.name))
             for f in fields(cls)
@@ -104,6 +108,7 @@ class Configuration:
         # in configurable and passes their value along.
         # Owner is present in metadata not in the configurable, so it won't be present
         # But user_id is set internally and its present in configurable and would be passed
+        logging.info(f"Metadata. {configurable.keys()}")
         values: dict[str, Any] = {
             f.name: os.environ.get(f.name.upper(), configurable.get(f.name))
             for f in fields(cls)
