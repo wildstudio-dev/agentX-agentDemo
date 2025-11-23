@@ -63,4 +63,12 @@ class State(InputState):
     This is a 'managed' variable, controlled by the state machine rather than user code.
     It is set to 'True' when the step count reaches recursion_limit - 1.
     """
+
+    rate: Optional[float] = field(default=None)
+    """
+    Optional interest rate from metadata to be used in rate calculations.
+
+    This rate can be provided via metadata and will be passed to the get_rate tool
+    if no rate is explicitly specified in the tool call.
+    """
     
