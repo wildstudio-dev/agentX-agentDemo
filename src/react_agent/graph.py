@@ -108,7 +108,7 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
         state.messages,
         strategy="last",
         token_counter=count_tokens_approximately,
-        max_tokens=1024,
+        max_tokens=2048,
         start_on="human",
         end_on=("human", "tool"),
     )
