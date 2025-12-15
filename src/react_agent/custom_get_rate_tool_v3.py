@@ -321,53 +321,80 @@ def get_fha_mi_rate(ltv, term, loan_amount) -> float:
                 return 0.0065
 
 
-def calculate_monthly_premium(interest, orig_mtg, p_i, upfront, mip):
-    """Calculate monthly mortgage insurance premium.
+def calculate_monthly_premium(interest, orig_mtg, p_i, upfront, mip, term_years=30):
+    """Calculate monthly mortgage insurance premium using Encompass methodology.
+
+    Per Encompass:
+    1. MI is based off the base loan amount (without UFMIP)
+    2. Calculate payment using base loan amount (not loan amount with UFMIP)
+    3. Simulate paydown for 11 months (months 1-11)
+    4. Take 12-month average (starting balance + 11 month-end balances)
+    5. Calculate monthly MI = (avg_balance * mi_rate) / 12
+    6. Round to 2 decimals at each step
 
     Args:
-        interest: Annual interest rate (percentage)
-        orig_mtg: Original mortgage amount
-        p_i: Monthly principal and interest payment
+        interest: Annual interest rate (percentage, e.g., 6.5)
+        orig_mtg: Base loan amount (without UFMIP)
+        p_i: Monthly principal and interest payment (UNUSED - calculated from base loan amount)
         upfront: Upfront MIP factor (e.g., 0.0175 for 1.75%)
-        mip: Annual MIP factor (e.g., 0.0085 for 0.85%)
+        mip: Annual MIP factor (e.g., 0.0055 for 0.55%)
+        term_years: Loan term in years (default 30)
 
     Returns:
         Monthly mortgage insurance premium
     """
     try:
-        logging.info("Calculating monthly premium...")
-        last_val = orig_mtg
-        total_amt = last_val  # initialize
+        logging.info(f"Calculating monthly premium using Encompass methodology for base loan ${orig_mtg:,.2f}...")
 
-        # Only loop through the first 12 months
-        for i in range(2, 14):
-            hold_val = last_val * interest
-            hold_val = round(hold_val, 2)
+        # Calculate payment based on base loan amount (not including UFMIP)
+        # This is critical - we use the base loan amount for both balance AND payment calculation
+        monthly_rate = interest / 100 / 12
+        term_months = term_years * 12
 
-            hold_val = hold_val / 1200
-            hold_val = round(hold_val, 2)
+        if monthly_rate > 0:
+            payment = (
+                orig_mtg *
+                (monthly_rate * (1 + monthly_rate) ** term_months)
+                / ((1 + monthly_rate) ** term_months - 1)
+            )
+        else:
+            payment = orig_mtg / term_months
 
-            hold_val = hold_val + last_val
-            hold_val = hold_val - p_i
+        payment = round(payment, 2)
+        logging.info(f"Payment for MI calculation (based on base loan): ${payment}")
 
-            last_val = hold_val
-            total_amt = total_amt + last_val
+        # Start with month 0 balance (base loan amount)
+        balance = round(orig_mtg, 2)
+        total_balance = balance  # Initialize with month 0 balance
 
-        # Apply final calculations
-        total_amt = total_amt / 12
-        total_amt = total_amt * mip
-        total_amt = round(total_amt, 2)
+        # Simulate 11 months of paydown (months 1-11)
+        for month in range(1, 12):
+            # Calculate interest for this month (rounded to 2 decimals)
+            interest_payment = round(balance * monthly_rate, 2)
 
-        total_amt = total_amt / (1 + upfront)
-        total_amt = round(total_amt, 2)
+            # Calculate principal (rounded to 2 decimals)
+            principal_payment = round(payment - interest_payment, 2)
 
-        total_amt = total_amt / 12
-        total_amt = round(total_amt, 2)
-        logging.info(f"Monthly premium calculated: {total_amt}")
-        return total_amt
+            # Update balance (rounded to 2 decimals)
+            balance = round(balance - principal_payment, 2)
+
+            # Add to running total for average calculation
+            total_balance += balance
+
+            logging.debug(f"Month {month}: Interest=${interest_payment}, Principal=${principal_payment}, Balance=${balance}")
+
+        # Calculate 12-month average (month 0 + months 1-11)
+        avg_balance = round(total_balance / 12, 2)
+        logging.info(f"12-month average balance: ${avg_balance:,.2f}")
+
+        # Calculate monthly MI: (average balance * annual MI rate) / 12
+        monthly_mi = round((avg_balance * mip) / 12, 2)
+
+        logging.info(f"Monthly MI calculated: ${monthly_mi} (using {mip * 100:.2f}% annual rate)")
+        return monthly_mi
     except Exception as e:
         logging.error(f"Error calculating monthly premium: {e}")
-        return (orig_mtg * mip) / 12  # Fallback calculation
+        return round((orig_mtg * mip) / 12, 2)  # Fallback calculation
 
 
 def calculate_monthly_pi_payment(loan_amount: float, annual_rate: float, term_years: int) -> float:
@@ -865,7 +892,7 @@ def get_rate(
         # FHA always requires MIP regardless of second lien
         mi_rate = get_fha_mi_rate(calculated_ltv, loan_term_years, base_loan_amount)
         monthly_mi = calculate_monthly_premium(
-            annual_interest_rate, base_loan_amount, monthly_principal_interest, 0.0175, mi_rate
+            annual_interest_rate, base_loan_amount, monthly_principal_interest, 0.0175, mi_rate, loan_term_years
         )
 
     # Calculate SECOND LIEN payment if present
