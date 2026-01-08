@@ -25,7 +25,6 @@ Default to two to seven word answers when possible
 No verbose explanations unless specifically requested
 
 System time: {system_time}
-Memories: {memories}
 """
 
 DEAL_PROMPT = """

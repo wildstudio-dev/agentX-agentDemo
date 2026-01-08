@@ -68,40 +68,41 @@ async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) 
     model = load_chat_model(configuration.model).bind_tools([get_rate, upsert_memory, document_analysis, summary])
 
     """Extract the user's state from the conversation and update the memory."""
-    configurable = Configuration.from_runnable_config(config)
+    # configurable = Configuration.from_runnable_config(config)
     metadata = Configuration.from_metadata(config)
 
-    memories = []
+    # memories = []
     metadata_rate = metadata.rate if hasattr(metadata, 'rate') else None
     logging.info(f"Rate from metadata: {metadata_rate}")
-    try:
-        namespace_prefix = ("memories", configurable.user_id)
-        if metadata.property_id:
-            logging.info(f"Property ID found, using it in the namespace. {metadata.property_id}")
-            namespace_prefix = (configurable.user_id, metadata.property_id)
-        logging.info(f"Retrieving memories for namespace: {namespace_prefix}")
-        namespaces = await store.alist_namespaces()
-        logging.info(f"Available namespaces: {namespaces}")
-        memories = await store.asearch(
-            namespace_prefix,
-            query=str([m.content for m in state.messages[-3:]]),
-            limit=10,
-        )
-        logging.info(f"Retrieved memories: {memories}")
-    except Exception as e:
-        logging.error(f"Error retrieving memories: {e}")
+    # try:
+    #     namespace_prefix = ("memories", configurable.user_id)
+    #     if metadata.property_id:
+    #         logging.info(f"Property ID found, using it in the namespace. {metadata.property_id}")
+    #         namespace_prefix = (configurable.user_id, metadata.property_id)
+    #     logging.info(f"Retrieving memories for namespace: {namespace_prefix}")
+    #     namespaces = await store.alist_namespaces()
+    #     logging.info(f"Available namespaces: {namespaces}")
+    #     memories = await store.asearch(
+    #         namespace_prefix,
+    #         query=str([m.content for m in state.messages[-3:]]),
+    #         limit=10,
+    #     )
+    #     logging.info(f"Retrieved memories: {memories}")
+    # except Exception as e:
+    #     logging.error(f"Error retrieving memories: {e}")
 
     # Format memories for inclusion in the prompt
-    formatted = "\n".join(f"[{mem.key}]: {mem.value} (similarity: {mem.score})" for mem in memories)
-    if formatted:
-        formatted = f"""
-    <memories>
-    {formatted}
-    </memories>"""
+    # formatted = "\n".join(f"[{mem.key}]: {mem.value} (similarity: {mem.score})" for mem in memories)
+    # if formatted:
+    #     formatted = f"""
+    # <memories>
+    # {formatted}
+    # </memories>"""
 
     system_message = configuration.system_prompt.format(
         system_time=datetime.now(tz=UTC).isoformat(),
-        memories=formatted,
+        memories="",
+        # memories=formatted,
     )
 
     messages = trim_messages(
