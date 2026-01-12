@@ -713,23 +713,17 @@ def get_rate(
         if ltv is not None:
             ltv = parse_currency_amount(ltv) if isinstance(ltv, str) else float(ltv)
     except ValueError as e:
-        return {
-            "error": f"Invalid input format: {str(e)}. Please provide numbers in formats like '500000', '$500,000', '500k', '20%', or '500 thousand'."
-        }
+        return f"Invalid input format: {str(e)}. Please provide numbers in formats like '500000', '$500,000', '500k', '20%', or '500 thousand'."
 
     if home_price is None and loan_amount is None:
-        return {
-            "error": "Either home_price or loan_amount must be provided."
-        }
+        return "Either home_price or loan_amount must be provided."
 
     # Validate and normalize loan type
     if not isinstance(loan_type, LoanType):
         try:
             loan_type = validate_normalize_loan_type(loan_type)
         except ValueError:
-            return {
-                "error": "Invalid loan type. Must be 'conventional', 'fha', 'va', 'jumbo'"
-            }
+            return "Invalid loan type. Must be 'conventional', 'fha', 'va', 'jumbo'"
 
     # Validate and normalize second lien type
     if second_lien_type is not None and isinstance(second_lien_type, str):
@@ -742,9 +736,7 @@ def get_rate(
             try:
                 second_lien_type = SecondLienType(second_lien_type_lower)
             except ValueError:
-                return {
-                    "error": "Invalid second lien type. Must be 'fully_amortized' or 'interest_only'"
-                }
+                return "Invalid second lien type. Must be 'fully_amortized' or 'interest_only'"
 
     # Default to interest_only if not specified
     if second_lien_type is None and second_lien_amount is not None:
@@ -793,9 +785,7 @@ def get_rate(
 
     # Validate that down payment isn't negative
     if down_payment < 0:
-        return {
-            "error": "Invalid loan structure: down payment cannot be negative. Please check your second lien amount and down payment inputs."
-        }
+        return "Invalid loan structure: down payment cannot be negative. Please check your second lien amount and down payment inputs."
 
     # Determine if loan should be jumbo
     if loan_type == LoanType.CONVENTIONAL and loan_amount > LOAN_LIMITS["conventional"][units - 1]:
@@ -804,9 +794,7 @@ def get_rate(
     # Validate loan limits (only for first lien)
     if loan_type in [LoanType.CONVENTIONAL, LoanType.FHA]:
         if loan_amount > LOAN_LIMITS[loan_type.value][units - 1]:
-            return {
-                "error": f"First lien amount ${loan_amount:,.2f} exceeds {loan_type.value} limit of ${LOAN_LIMITS[loan_type.value][units - 1]:,.2f} for {units} unit(s)."
-            }
+            return  f"First lien amount ${loan_amount:,.2f} exceeds {loan_type.value} limit of ${LOAN_LIMITS[loan_type.value][units - 1]:,.2f} for {units} unit(s)."
 
     # Calculate LTV (first lien only) and CLTV (combined)
     calculated_ltv = round(loan_amount / home_price, 3) if home_price > 0 else 0
@@ -818,22 +806,16 @@ def get_rate(
 
     # Validate CLTV doesn't exceed reasonable limits
     if calculated_cltv > 1.05:  # 105% CLTV max
-        return {
-            "error": f"Combined LTV of {calculated_cltv:.1%} exceeds maximum allowable CLTV of 105%. This structure may not be feasible."
-        }
+        return f"Combined LTV of {calculated_cltv:.1%} exceeds maximum allowable CLTV of 105%. This structure may not be feasible."
 
     # Validate LTV limits for first lien
     if loan_type == LoanType.CONVENTIONAL and calculated_ltv > 0.95:
         if calculated_ltv > 0.965:
-            return {
-                "error": f"First lien LTV of {calculated_ltv:.1%} exceeds conventional loan limit of 95%. Consider FHA loan."
-            }
+            return f"First lien LTV of {calculated_ltv:.1%} exceeds conventional loan limit of 95%. Consider FHA loan."
         else:
             loan_type = LoanType.FHA
     elif loan_type == LoanType.FHA and calculated_ltv > 0.965:
-        return {
-            "error": f"First lien LTV of {calculated_ltv:.1%} exceeds FHA loan limit of 96.5%."
-        }
+        return f"First lien LTV of {calculated_ltv:.1%} exceeds FHA loan limit of 96.5%."
 
     # Get interest rate
     if annual_interest_rate is None:

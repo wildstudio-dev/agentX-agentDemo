@@ -9,7 +9,7 @@
   "store": {
       "index": {
           "dims": 1536,
-          "embed": "./src/react_agent/embed.py:embed_texts",
+          "embed": "openai:text-embedding-3-small",
           "fields": ["$"]
       }
   },
